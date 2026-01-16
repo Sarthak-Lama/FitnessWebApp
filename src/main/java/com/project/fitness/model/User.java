@@ -36,6 +36,6 @@ public class User {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
-    private List<Recommendations> recommendations = new ArrayList<>();
+    private List<Recommendation> recommendations = new ArrayList<>();
 
 }

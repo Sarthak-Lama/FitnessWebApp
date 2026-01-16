@@ -52,6 +52,6 @@ public class Activity{
 
     @OneToMany(mappedBy = "activity", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
-    private List<Recommendations> recommendationsList = new ArrayList<>();
+    private List<Recommendation> recommendationsList = new ArrayList<>();
 
 }
