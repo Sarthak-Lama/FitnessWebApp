@@ -19,10 +19,16 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
+
+    @Column(unique = true)
     private String email;
+
     private String password;
     private String firstName;
     private String lastName;
+
+    @Enumerated(EnumType.STRING) //hardcoded user
+    private UserRole role = UserRole.USER;
 
     @CreationTimestamp
     private LocalDateTime createdAt ;
