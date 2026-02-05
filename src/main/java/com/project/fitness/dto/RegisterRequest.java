@@ -15,9 +15,6 @@ public class RegisterRequest {
     private String email;
 
  @NotBlank(message = "Password is required")
- @Min(8)
- @NotNull
- @NotEmpty
     private String password;
 
     private String firstName;
