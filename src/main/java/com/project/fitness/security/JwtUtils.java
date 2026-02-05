@@ -56,7 +56,7 @@ public class JwtUtils {
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
     }
 
-    public String getUsernameFromToken(String jwt) {
+    public String getUserIdFromToken(String jwt) {
         return Jwts.parser().verifyWith((SecretKey) key())
                 .build().parseSignedClaims(jwt)
                 .getPayload().getSubject();
