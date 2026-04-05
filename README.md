@@ -82,10 +82,6 @@ A full-stack fitness tracking web application built as a 6th semester college pr
 - Body weight and measurement history
 - Plain text overview — no graphs or charts
 
-### Streak System
-- Tracks consecutive days with food and exercise logged
-- Milestone badges at 7, 30, and 90 days
-
 ### Goal Validation
 - Flags unsafe goals (e.g., losing more than 1 kg/week)
 - Minimum calorie recommendations enforced based on gender
@@ -189,7 +185,6 @@ Full docs available at Swagger UI once backend is running.
 
 ## Notes
 
-- `NextDayPlanService` is implemented in the backend but not wired to the frontend. Planned for future integration.
 - Recommendations are based solely on gym session and cardio logs — no generic activity types.
 - Frontend is intentionally simple — plain HTML/CSS/JS, no framework, no component library.
 - Nepali food database is hardcoded in `app.js` with 25 common food items.
