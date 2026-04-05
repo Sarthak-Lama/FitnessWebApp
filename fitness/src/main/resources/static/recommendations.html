@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitTrack — Recommendations</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<div id="sidebarMount"></div>
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-2">
+      <button class="btn btn-ghost btn-sm" id="sidebarToggle">☰</button>
+      <span class="topbar-title">AI Recommendations</span>
+    </div>
+  </header>
+
+  <div class="page-content">
+    <div class="mb-6">
+      <p class="text-muted text-sm">Personalised recommendations based on your activities, tailored for Nepali lifestyle and diet.</p>
+    </div>
+
+    <div id="recList">
+      <p class="text-muted text-sm">Loading recommendations...</p>
+    </div>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/sidebar.js"></script>
+<script>
+  requireAuth();
+  document.getElementById('sidebarMount').innerHTML = renderSidebar();
+  initSidebar();
+
+  async function load() {
+    try {
+      const recs = await api.getUserRecommendations();
+      const el = document.getElementById('recList');
+      if (!recs.length) {
+        el.innerHTML = `
+          <div class="card text-center" style="padding:48px;">
+            <div style="font-size:3rem;margin-bottom:16px;">💡</div>
+            <h3 style="margin-bottom:8px;">No recommendations yet</h3>
+            <p class="text-muted text-sm" style="margin-bottom:20px;">Log some activities and click "Recommendations" to generate AI-powered tips tailored to your goals.</p>
+            <a href="/activities.html" class="btn btn-primary">Go to Activities</a>
+          </div>`;
+        return;
+      }
+      el.innerHTML = recs.map((rec, i) => `
+        <div class="card mb-6">
+          <div class="card-header">
+            <div>
+              <span class="card-title">${activityIcon(rec.activityType ?? '')} ${formatType(rec.activityType ?? 'Activity')} Recommendations</span>
+              <div class="text-muted text-xs mt-1">${formatDateTime(rec.createdAt)}</div>
+            </div>
+            <span class="badge badge-${activityColor(rec.activityType)}">${formatType(rec.activityType ?? '')}</span>
+          </div>
+
+          <div class="rec-section">
+            <div class="rec-section-title improvements">📈 Improvements</div>
+            <div class="rec-list">
+              ${(rec.improvements || []).map(item => `<div class="rec-item">${item}</div>`).join('')}
+            </div>
+          </div>
+
+          <div class="rec-section">
+            <div class="rec-section-title suggestions">🍛 Suggestions & Nepali Food Tips</div>
+            <div class="rec-list">
+              ${(rec.suggestions || []).map(item => `<div class="rec-item">${item}</div>`).join('')}
+            </div>
+          </div>
+
+          <div class="rec-section">
+            <div class="rec-section-title safety">⚠️ Safety Tips</div>
+            <div class="rec-list">
+              ${(rec.safety || []).map(item => `<div class="rec-item">${item}</div>`).join('')}
+            </div>
+          </div>
+        </div>`).join('');
+    } catch (err) {
+      document.getElementById('recList').innerHTML = `<p class="text-muted">Failed to load: ${err.message}</p>`;
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>

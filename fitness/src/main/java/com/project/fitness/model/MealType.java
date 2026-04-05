@@ -1,0 +1,10 @@
+package com.project.fitness.model;
+
+public enum MealType {
+    BREAKFAST,
+    LUNCH,
+    DINNER,
+    SNACK,
+    PRE_WORKOUT,
+    POST_WORKOUT
+}

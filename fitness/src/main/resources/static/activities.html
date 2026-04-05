@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitTrack — Activities</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<div id="sidebarMount"></div>
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-2">
+      <button class="btn btn-ghost btn-sm" id="sidebarToggle">☰</button>
+      <span class="topbar-title">Activities</span>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openModal()">+ Log Activity</button>
+  </header>
+
+  <div class="page-content">
+    <!-- Stats row -->
+    <div class="stat-grid mb-6">
+      <div class="stat-card green">
+        <div class="stat-label">Total Activities</div>
+        <div class="stat-value" id="totalActs">—</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">Total Calories Burned</div>
+        <div class="stat-value" id="totalCals">—</div>
+        <div class="stat-sub">all time</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-label">Total Duration</div>
+        <div class="stat-value" id="totalDur">—</div>
+        <div class="stat-sub">minutes</div>
+      </div>
+    </div>
+
+    <!-- Activity list -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Activity History</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Activity</th>
+              <th>Duration</th>
+              <th>Calories</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="activityTableBody">
+            <tr><td colspan="5" class="text-muted text-sm">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Log Activity Modal -->
+<div class="modal-overlay" id="activityModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Log Activity</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modalAlert"></div>
+    <form id="activityForm">
+      <div class="form-group">
+        <label>Activity Type</label>
+        <select class="form-control" id="actType" required>
+          <option value="">Select activity...</option>
+          <optgroup label="Cardio">
+            <option value="RUNNING">Running</option>
+            <option value="WALKING">Walking</option>
+            <option value="CYCLING">Cycling</option>
+            <option value="SWIMMING">Swimming</option>
+            <option value="JUMP_ROPE">Jump Rope</option>
+            <option value="CARDIO">Cardio (General)</option>
+            <option value="HITT">HIIT</option>
+          </optgroup>
+          <optgroup label="Gym / Strength">
+            <option value="WEIGHT_TRAINING">Weight Training</option>
+            <option value="BENCH_PRESS">Bench Press</option>
+            <option value="DEADLIFT">Deadlift</option>
+            <option value="SQUAT">Squat</option>
+            <option value="PULL_UP">Pull Up</option>
+            <option value="PUSH_UP">Push Up</option>
+            <option value="PLANK">Plank</option>
+            <option value="POWERLIFTING">Powerlifting</option>
+            <option value="CROSSFIT">CrossFit</option>
+          </optgroup>
+          <optgroup label="Mind-Body">
+            <option value="YOGA">Yoga</option>
+            <option value="PILATES">Pilates</option>
+            <option value="STRETCHING">Stretching</option>
+            <option value="MEDITATION">Meditation</option>
+          </optgroup>
+          <optgroup label="Other">
+            <option value="ZUMBA">Zumba</option>
+            <option value="OTHER">Other</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Duration (minutes)</label>
+          <input type="number" class="form-control" id="actDuration" placeholder="30" min="1" required />
+        </div>
+        <div class="form-group">
+          <label>Calories Burned</label>
+          <input type="number" class="form-control" id="actCalories" placeholder="250" min="0" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Date & Time</label>
+        <input type="datetime-local" class="form-control" id="actStartTime" />
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary" id="saveActBtn">Save Activity</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Recommendations Modal -->
+<div class="modal-overlay" id="recModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">AI Recommendations</span>
+      <button class="modal-close" onclick="closeRecModal()">✕</button>
+    </div>
+    <div id="recContent"><p class="text-muted">Loading recommendations...</p></div>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/sidebar.js"></script>
+<script>
+  requireAuth();
+  document.getElementById('sidebarMount').innerHTML = renderSidebar();
+  initSidebar();
+
+  // Set default datetime to now
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('actStartTime').value = now.toISOString().slice(0, 16);
+
+  let activities = [];
+
+  async function loadActivities() {
+    try {
+      activities = await api.getActivities();
+      renderTable(activities);
+      const totalCals = activities.reduce((s, a) => s + (a.caloriesBurned || 0), 0);
+      const totalDur = activities.reduce((s, a) => s + (a.duration || 0), 0);
+      document.getElementById('totalActs').textContent = activities.length;
+      document.getElementById('totalCals').textContent = totalCals;
+      document.getElementById('totalDur').textContent = totalDur;
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function renderTable(list) {
+    const tbody = document.getElementById('activityTableBody');
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-sm">No activities logged yet. Click "+ Log Activity" to start!</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(a => `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span>${activityIcon(a.type)}</span>
+            <span class="font-bold">${formatType(a.type)}</span>
+          </div>
+        </td>
+        <td>${a.duration ?? '—'} min</td>
+        <td><span class="badge badge-green">${a.caloriesBurned ?? 0} kcal</span></td>
+        <td class="text-muted text-sm">${formatDateTime(a.createdAt)}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="getRecommendation('${a.id}')">
+            💡 Recommendations
+          </button>
+        </td>
+      </tr>`).join('');
+  }
+
+  function openModal() {
+    document.getElementById('activityModal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('activityModal').classList.remove('open');
+    document.getElementById('activityForm').reset();
+    document.getElementById('modalAlert').innerHTML = '';
+  }
+
+  document.getElementById('activityForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('saveActBtn');
+    setLoading(btn, true);
+    try {
+      const userId = localStorage.getItem('userId');
+      const startTime = document.getElementById('actStartTime').value;
+      await api.trackActivity({
+        userId,
+        type: document.getElementById('actType').value,
+        duration: parseInt(document.getElementById('actDuration').value),
+        caloriesBurned: parseInt(document.getElementById('actCalories').value) || 0,
+        startTime: startTime ? new Date(startTime).toISOString() : new Date().toISOString(),
+      });
+      closeModal();
+      loadActivities();
+    } catch (err) {
+      showAlert('modalAlert', err.message || 'Failed to save activity');
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+
+  async function getRecommendation(activityId) {
+    document.getElementById('recModal').classList.add('open');
+    document.getElementById('recContent').innerHTML = '<p class="text-muted">Generating AI recommendations...</p>';
+    try {
+      // Try to get existing or generate new
+      let recs = await api.getActivityRecommendations(activityId);
+      if (!recs.length) {
+        const userId = localStorage.getItem('userId');
+        const rec = await api.generateRecommendation({ userId, activityId });
+        recs = [rec];
+      }
+      const rec = recs[0];
+      document.getElementById('recContent').innerHTML = `
+        <div class="rec-section">
+          <div class="rec-section-title improvements">Improvements</div>
+          <div class="rec-list">${(rec.improvements||[]).map(i => `<div class="rec-item">${i}</div>`).join('')}</div>
+        </div>
+        <div class="rec-section">
+          <div class="rec-section-title suggestions">Suggestions & Nepali Food Tips</div>
+          <div class="rec-list">${(rec.suggestions||[]).map(s => `<div class="rec-item">${s}</div>`).join('')}</div>
+        </div>
+        <div class="rec-section">
+          <div class="rec-section-title safety">Safety Tips</div>
+          <div class="rec-list">${(rec.safety||[]).map(s => `<div class="rec-item">${s}</div>`).join('')}</div>
+        </div>`;
+    } catch (err) {
+      document.getElementById('recContent').innerHTML = `<p class="text-muted">Could not load recommendations: ${err.message}</p>`;
+    }
+  }
+
+  function closeRecModal() {
+    document.getElementById('recModal').classList.remove('open');
+  }
+
+  loadActivities();
+</script>
+</body>
+</html>

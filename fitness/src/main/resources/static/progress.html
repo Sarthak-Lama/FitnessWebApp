@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitTrack — Progress</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div id="sidebarMount"></div>
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-2">
+      <button class="btn btn-ghost btn-sm" id="sidebarToggle">☰</button>
+      <span class="topbar-title">Progress Tracker</span>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openWeightModal()">+ Log Weight</button>
+  </header>
+
+  <div class="page-content">
+    <!-- Weight stats -->
+    <div class="stat-grid mb-6">
+      <div class="stat-card blue">
+        <div class="stat-label">Current Weight</div>
+        <div class="stat-value" id="curWeight">—</div>
+        <div class="stat-sub">kg</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Target Weight</div>
+        <div class="stat-value" id="targetWeight">—</div>
+        <div class="stat-sub">kg</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-label">Weight to Go</div>
+        <div class="stat-value" id="weightToGo">—</div>
+        <div class="stat-sub">kg</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-label">BMI</div>
+        <div class="stat-value" id="bmiVal">—</div>
+        <div class="stat-sub" id="bmiLabel"></div>
+      </div>
+    </div>
+
+    <!-- Weight chart -->
+    <div class="card mb-6">
+      <div class="card-header">
+        <span class="card-title">Weight History</span>
+      </div>
+      <div class="chart-wrap" style="height:260px;">
+        <canvas id="weightChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Weight log table -->
+    <div class="card mb-6">
+      <div class="card-header">
+        <span class="card-title">Weight Log</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Weight (kg)</th><th>Change</th><th>Notes</th></tr>
+          </thead>
+          <tbody id="weightTableBody">
+            <tr><td colspan="4" class="text-muted">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Log Weight Modal -->
+<div class="modal-overlay" id="weightModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Log Weight</span>
+      <button class="modal-close" onclick="closeWeightModal()">✕</button>
+    </div>
+    <div id="weightAlert"></div>
+    <form id="weightForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Weight (kg) *</label>
+          <input type="number" class="form-control" id="weightKg" placeholder="70.5" step="0.1" min="20" max="300" required />
+        </div>
+        <div class="form-group">
+          <label>Date & Time</label>
+          <input type="datetime-local" class="form-control" id="weightTime" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <input type="text" class="form-control" id="weightNotes" placeholder="Morning weight, after workout..." />
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary" id="saveWeightBtn">Save</button>
+        <button type="button" class="btn btn-ghost" onclick="closeWeightModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/sidebar.js"></script>
+<script>
+  requireAuth();
+  document.getElementById('sidebarMount').innerHTML = renderSidebar();
+  initSidebar();
+
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('weightTime').value = now.toISOString().slice(0, 16);
+
+  let weightChart = null;
+
+  async function load() {
+    try {
+      const [profile, logs] = await Promise.all([
+        api.getProfile().catch(() => null),
+        api.getWeightLogs()
+      ]);
+
+      if (profile) {
+        document.getElementById('targetWeight').textContent = profile.targetWeight ?? '—';
+        if (profile.bmi) {
+          document.getElementById('bmiVal').textContent = profile.bmi;
+          document.getElementById('bmiLabel').textContent = getBmiLabel(profile.bmi);
+        }
+      }
+
+      if (logs.length) {
+        const cur = logs[0].weightKg;
+        document.getElementById('curWeight').textContent = cur;
+        const target = profile?.targetWeightKg;
+        if (target) {
+          document.getElementById('targetWeight').textContent = target;
+          document.getElementById('weightToGo').textContent = Math.abs(cur - target).toFixed(1);
+        }
+      }
+
+      renderWeightChart(logs);
+      renderWeightTable(logs);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function renderWeightChart(logs) {
+    const sorted = [...logs].reverse();
+    const labels = sorted.map(l => formatDate(l.loggedAt));
+    const data = sorted.map(l => l.weightKg);
+
+    const ctx = document.getElementById('weightChart').getContext('2d');
+    if (weightChart) weightChart.destroy();
+    weightChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Weight (kg)',
+          data,
+          borderColor: '#4f46e5',
+          backgroundColor: 'rgba(79,70,229,0.1)',
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: '#4f46e5',
+          pointRadius: 4,
+        }]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#94a3b8' } } },
+        scales: {
+          x: { ticks: { color: '#64748b' }, grid: { color: '#334155' } },
+          y: {
+            ticks: { color: '#64748b' },
+            grid: { color: '#334155' },
+            suggestedMin: data.length ? Math.min(...data) - 2 : 50,
+            suggestedMax: data.length ? Math.max(...data) + 2 : 100,
+          }
+        }
+      }
+    });
+  }
+
+  function renderWeightTable(logs) {
+    const tbody = document.getElementById('weightTableBody');
+    if (!logs.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-muted">No weight logged yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = logs.map((log, i) => {
+      const prev = logs[i + 1];
+      let changeHtml = '—';
+      if (prev) {
+        const diff = (log.weightKg - prev.weightKg).toFixed(1);
+        const color = diff < 0 ? 'var(--accent)' : diff > 0 ? 'var(--danger)' : 'var(--text-muted)';
+        changeHtml = `<span style="color:${color};font-weight:600;">${diff > 0 ? '+' : ''}${diff} kg</span>`;
+      }
+      return `<tr>
+        <td>${formatDate(log.loggedAt)}</td>
+        <td class="font-bold">${log.weightKg} kg</td>
+        <td>${changeHtml}</td>
+        <td class="text-muted text-sm">${log.notes || '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function getBmiLabel(bmi) {
+    if (bmi < 18.5) return 'Underweight';
+    if (bmi < 25) return 'Normal';
+    if (bmi < 30) return 'Overweight';
+    return 'Obese';
+  }
+
+  function openWeightModal() { document.getElementById('weightModal').classList.add('open'); }
+  function closeWeightModal() {
+    document.getElementById('weightModal').classList.remove('open');
+    document.getElementById('weightForm').reset();
+    document.getElementById('weightAlert').innerHTML = '';
+  }
+
+  document.getElementById('weightForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('saveWeightBtn');
+    setLoading(btn, true);
+    try {
+      const userId = localStorage.getItem('userId');
+      const t = document.getElementById('weightTime').value;
+      await api.logWeight({
+        userId,
+        weightKg: parseFloat(document.getElementById('weightKg').value),
+        notes: document.getElementById('weightNotes').value,
+        loggedAt: t ? new Date(t).toISOString() : new Date().toISOString(),
+      });
+      closeWeightModal();
+      load();
+    } catch (err) {
+      showAlert('weightAlert', err.message || 'Failed to log weight');
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+
+  load();
+</script>
+</body>
+</html>

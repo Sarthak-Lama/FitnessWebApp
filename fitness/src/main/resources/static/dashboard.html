@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitTrack — Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div id="sidebarMount"></div>
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-2">
+      <button class="btn btn-ghost btn-sm" id="sidebarToggle">☰</button>
+      <span class="topbar-title">Dashboard</span>
+    </div>
+    <div class="topbar-actions">
+      <span class="text-muted text-sm" id="todayDate"></span>
+    </div>
+  </header>
+
+  <div class="page-content">
+    <!-- Greeting -->
+    <div class="mb-6">
+      <h2 style="font-size:1.4rem;font-weight:700;" id="greeting">Good morning! 👋</h2>
+      <p class="text-muted text-sm">Here's your fitness snapshot for today.</p>
+    </div>
+
+    <!-- Today Stats -->
+    <div class="stat-grid" id="statsGrid">
+      <div class="stat-card green">
+        <div class="stat-label">Calories Burned</div>
+        <div class="stat-value" id="calBurned">—</div>
+        <div class="stat-sub">Today</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-label">Calories Consumed</div>
+        <div class="stat-value" id="calConsumed">—</div>
+        <div class="stat-sub" id="calTarget">/ — target</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">Protein</div>
+        <div class="stat-value" id="protein">—</div>
+        <div class="stat-sub">grams today</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-label">Activities Today</div>
+        <div class="stat-value" id="todayActs">—</div>
+        <div class="stat-sub" id="weekActs">— this week</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">Current Weight</div>
+        <div class="stat-value" id="curWeight">—</div>
+        <div class="stat-sub" id="targetWeight">Target: —</div>
+      </div>
+    </div>
+
+    <!-- Calorie Balance Progress -->
+    <div class="card mb-6" id="balanceCard">
+      <div class="card-header">
+        <span class="card-title">Today's Calorie Balance</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+          <div class="text-sm text-muted mb-2">Consumed <span id="balConsumed" style="color:var(--warning);font-weight:700;"></span> / <span id="balTarget" style="font-weight:700;"></span> kcal</div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar" id="calorieBar" style="background:var(--warning);width:0%"></div>
+          </div>
+        </div>
+        <div>
+          <div class="text-sm text-muted mb-2">Macros split (today)</div>
+          <div class="chart-wrap" style="height:100px;">
+            <canvas id="macroChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activities & Food -->
+    <div class="grid-2 mb-6">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Recent Activities</span>
+          <a href="/activities.html" class="btn btn-ghost btn-sm">View All</a>
+        </div>
+        <div class="item-list" id="recentActivities">
+          <p class="text-muted text-sm">No activities yet.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Recent Food</span>
+          <a href="/nutrition.html" class="btn btn-ghost btn-sm">View All</a>
+        </div>
+        <div class="item-list" id="recentFood">
+          <p class="text-muted text-sm">No food logged yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weekly calories chart -->
+    <div class="card mb-6">
+      <div class="card-header">
+        <span class="card-title">Weekly Overview</span>
+      </div>
+      <div class="chart-wrap" style="height:200px;">
+        <canvas id="weeklyChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/sidebar.js"></script>
+<script>
+  requireAuth();
+  document.getElementById('sidebarMount').innerHTML = renderSidebar();
+  initSidebar();
+
+  const now = new Date();
+  document.getElementById('todayDate').textContent = now.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  const hour = now.getHours();
+  const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('greeting').textContent = `${greet}, ${localStorage.getItem('firstName') || 'there'}! 👋`;
+
+  async function loadDashboard() {
+    try {
+      const d = await api.getDashboard();
+
+      document.getElementById('calBurned').textContent = d.todayCaloriesBurned ?? 0;
+      document.getElementById('calConsumed').textContent = d.todayCaloriesConsumed ?? 0;
+      document.getElementById('calTarget').textContent = `/ ${d.dailyCalorieTarget ?? 2000} target`;
+      document.getElementById('protein').textContent = `${d.todayProtein ?? 0}g`;
+      document.getElementById('todayActs').textContent = d.todayActivities ?? 0;
+      document.getElementById('weekActs').textContent = `${d.weeklyActivities ?? 0} this week`;
+      document.getElementById('curWeight').textContent = d.currentWeight ? `${d.currentWeight} kg` : '—';
+      document.getElementById('targetWeight').textContent = `Target: ${d.targetWeight ? d.targetWeight + ' kg' : '—'}`;
+
+      // Calorie balance bar
+      const pct = Math.min(100, Math.round(((d.todayCaloriesConsumed ?? 0) / (d.dailyCalorieTarget ?? 2000)) * 100));
+      document.getElementById('calorieBar').style.width = pct + '%';
+      document.getElementById('balConsumed').textContent = d.todayCaloriesConsumed ?? 0;
+      document.getElementById('balTarget').textContent = d.dailyCalorieTarget ?? 2000;
+
+      // Macro pie chart
+      const macroCtx = document.getElementById('macroChart').getContext('2d');
+      new Chart(macroCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Protein', 'Carbs', 'Fat'],
+          datasets: [{ data: [d.todayProtein||1, d.todayCarbs||1, d.todayFat||1],
+            backgroundColor: ['#3b82f6','#f59e0b','#ef4444'], borderWidth: 0 }]
+        },
+        options: { plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } }, cutout: '65%' }
+      });
+
+      // Recent activities
+      if (d.recentActivities && d.recentActivities.length) {
+        document.getElementById('recentActivities').innerHTML = d.recentActivities.map(a => `
+          <div class="item-row">
+            <div class="item-row-left">
+              <div class="item-icon" style="background:rgba(79,70,229,0.15)">${activityIcon(a.type)}</div>
+              <div>
+                <div class="item-title">${formatType(a.type)}</div>
+                <div class="item-sub">${a.duration ?? 0} min • ${formatDate(a.createdAt)}</div>
+              </div>
+            </div>
+            <div class="item-right">
+              <div class="item-value">${a.caloriesBurned ?? 0}</div>
+              <div class="item-unit">kcal</div>
+            </div>
+          </div>`).join('');
+      }
+
+      // Recent food
+      if (d.recentFoodEntries && d.recentFoodEntries.length) {
+        document.getElementById('recentFood').innerHTML = d.recentFoodEntries.map(f => `
+          <div class="item-row">
+            <div class="item-row-left">
+              <div class="item-icon" style="background:rgba(245,158,11,0.15)">🍛</div>
+              <div>
+                <div class="item-title">${f.foodName}</div>
+                <div class="item-sub">${f.mealType} • ${formatDate(f.loggedAt)}</div>
+              </div>
+            </div>
+            <div class="item-right">
+              <div class="item-value">${f.calories ?? 0}</div>
+              <div class="item-unit">kcal</div>
+            </div>
+          </div>`).join('');
+      }
+
+      // Weekly chart (simple placeholder — backend could be extended for daily breakdown)
+      const weeklyCtx = document.getElementById('weeklyChart').getContext('2d');
+      const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      new Chart(weeklyCtx, {
+        type: 'bar',
+        data: {
+          labels: days,
+          datasets: [{
+            label: 'Calories Burned',
+            data: days.map((_, i) => i === new Date().getDay() - 1 ? d.weeklyCaloriesBurned : 0),
+            backgroundColor: 'rgba(79,70,229,0.6)', borderRadius: 6,
+          }]
+        },
+        options: {
+          plugins: { legend: { labels: { color: '#94a3b8' } } },
+          scales: {
+            x: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
+            y: { ticks: { color: '#64748b' }, grid: { color: '#334155' } }
+          }
+        }
+      });
+    } catch (err) {
+      console.error('Dashboard load failed:', err);
+    }
+  }
+
+  loadDashboard();
+</script>
+</body>
+</html>
