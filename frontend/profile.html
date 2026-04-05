@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitTrack — Profile</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="sidebarMount"></div>
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-2">
+      <button class="btn btn-ghost btn-sm" id="sidebarToggle">☰</button>
+      <span class="topbar-title">My Profile</span>
+    </div>
+  </header>
+
+  <div class="page-content">
+    <div style="max-width:600px;">
+
+      <!-- Profile card -->
+      <div class="card mb-6">
+        <div class="card-header">
+          <span class="card-title">Account</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
+          <div class="avatar" style="width:56px;height:56px;font-size:1.4rem;" id="profileAvatar">U</div>
+          <div>
+            <div style="font-size:1.1rem;font-weight:700;" id="profileName">—</div>
+            <div class="text-muted text-sm" id="profileEmail">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="alertBox"></div>
+
+      <!-- Fitness profile form -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Fitness Profile</span>
+        </div>
+        <form id="profileForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Current Weight (kg)</label>
+              <input type="number" class="form-control" id="weightKg" placeholder="70" step="0.1" min="20" />
+            </div>
+            <div class="form-group">
+              <label>Height (cm)</label>
+              <input type="number" class="form-control" id="heightCm" placeholder="170" step="0.1" min="100" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Target Weight (kg)</label>
+              <input type="number" class="form-control" id="targetWeightKg" placeholder="65" step="0.1" min="20" />
+            </div>
+            <div class="form-group">
+              <label>Age</label>
+              <input type="number" class="form-control" id="age" placeholder="25" min="10" max="120" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Gender</label>
+              <select class="form-control" id="gender">
+                <option value="">Select...</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Fitness Goal</label>
+              <select class="form-control" id="fitnessGoal">
+                <option value="">Select...</option>
+                <option value="WEIGHT_LOSS">Weight Loss</option>
+                <option value="WEIGHT_GAIN">Weight Gain</option>
+                <option value="MUSCLE_GAIN">Muscle Gain</option>
+                <option value="MAINTENANCE">Maintenance</option>
+                <option value="ENDURANCE">Endurance</option>
+                <option value="FLEXIBILITY">Flexibility</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Daily Calorie Target (kcal) <span class="text-muted text-xs">(leave blank to auto-calculate)</span></label>
+              <input type="number" class="form-control" id="dailyCalorieTarget" placeholder="Auto" min="1000" max="6000" />
+            </div>
+            <div class="form-group">
+              <label>Daily Protein Target (g)</label>
+              <input type="number" class="form-control" id="dailyProteinTarget" placeholder="Auto" min="30" max="300" />
+            </div>
+          </div>
+
+          <!-- BMI display -->
+          <div class="card" style="background:var(--bg-input);border:none;margin-bottom:16px;" id="bmiCard">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:center;">
+              <div>
+                <div class="text-xs text-muted">BMI</div>
+                <div style="font-size:1.3rem;font-weight:700;" id="bmiDisp">—</div>
+              </div>
+              <div>
+                <div class="text-xs text-muted">Category</div>
+                <div style="font-size:0.9rem;font-weight:600;" id="bmiCat">—</div>
+              </div>
+              <div>
+                <div class="text-xs text-muted">Cal. Target</div>
+                <div style="font-size:0.9rem;font-weight:600;" id="calTargetDisp">—</div>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="saveProfileBtn">Save Profile</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/sidebar.js"></script>
+<script>
+  requireAuth();
+  document.getElementById('sidebarMount').innerHTML = renderSidebar();
+  initSidebar();
+
+  const firstName = localStorage.getItem('firstName') || '';
+  const lastName = localStorage.getItem('lastName') || '';
+  const email = localStorage.getItem('email') || '';
+  document.getElementById('profileAvatar').textContent = (firstName[0] || 'U').toUpperCase();
+  document.getElementById('profileName').textContent = `${firstName} ${lastName}`.trim() || 'User';
+  document.getElementById('profileEmail').textContent = email;
+
+  async function loadProfile() {
+    try {
+      const p = await api.getProfile();
+      if (p.weightKg) document.getElementById('weightKg').value = p.weightKg;
+      if (p.heightCm) document.getElementById('heightCm').value = p.heightCm;
+      if (p.targetWeightKg) document.getElementById('targetWeightKg').value = p.targetWeightKg;
+      if (p.age) document.getElementById('age').value = p.age;
+      if (p.gender) document.getElementById('gender').value = p.gender;
+      if (p.fitnessGoal) document.getElementById('fitnessGoal').value = p.fitnessGoal;
+      if (p.dailyCalorieTarget) document.getElementById('dailyCalorieTarget').value = p.dailyCalorieTarget;
+      if (p.dailyProteinTarget) document.getElementById('dailyProteinTarget').value = p.dailyProteinTarget;
+      updateBmiDisplay(p);
+    } catch (_) {} // Profile may not exist yet
+  }
+
+  function updateBmiDisplay(p) {
+    if (p && p.bmi) {
+      document.getElementById('bmiDisp').textContent = p.bmi;
+      const cats = [
+        { max: 18.5, label: 'Underweight', color: 'var(--info)' },
+        { max: 25, label: 'Normal', color: 'var(--accent)' },
+        { max: 30, label: 'Overweight', color: 'var(--warning)' },
+        { max: 999, label: 'Obese', color: 'var(--danger)' },
+      ];
+      const cat = cats.find(c => p.bmi < c.max);
+      document.getElementById('bmiCat').textContent = cat.label;
+      document.getElementById('bmiCat').style.color = cat.color;
+    }
+    if (p && p.dailyCalorieTarget) {
+      document.getElementById('calTargetDisp').textContent = `${p.dailyCalorieTarget} kcal`;
+    }
+  }
+
+  document.getElementById('profileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('saveProfileBtn');
+    setLoading(btn, true);
+    try {
+      const userId = localStorage.getItem('userId');
+      const body = { userId };
+      const w = document.getElementById('weightKg').value;
+      const h = document.getElementById('heightCm').value;
+      const tw = document.getElementById('targetWeightKg').value;
+      const age = document.getElementById('age').value;
+      const g = document.getElementById('gender').value;
+      const goal = document.getElementById('fitnessGoal').value;
+      const cal = document.getElementById('dailyCalorieTarget').value;
+      const prot = document.getElementById('dailyProteinTarget').value;
+
+      if (w) body.weightKg = parseFloat(w);
+      if (h) body.heightCm = parseFloat(h);
+      if (tw) body.targetWeightKg = parseFloat(tw);
+      if (age) body.age = parseInt(age);
+      if (g) body.gender = g;
+      if (goal) body.fitnessGoal = goal;
+      if (cal) body.dailyCalorieTarget = parseInt(cal);
+      if (prot) body.dailyProteinTarget = parseInt(prot);
+
+      const saved = await api.saveProfile(body);
+      updateBmiDisplay(saved);
+      showAlert('alertBox', 'Profile saved successfully!', 'success');
+    } catch (err) {
+      showAlert('alertBox', err.message || 'Failed to save profile');
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+
+  loadProfile();
+</script>
+</body>
+</html>

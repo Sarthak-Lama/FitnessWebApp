@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitTrack — Sign In / Sign Up</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* ---- Multi-step specific styles ---- */
+    .step-indicator {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0; margin-bottom: 32px; padding-top: 8px;
+    }
+    .step-dot {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700; position: relative;
+      background: var(--bg-input); color: var(--text-muted);
+      border: 2px solid var(--border); transition: all 0.3s; flex-shrink: 0; z-index: 1;
+    }
+    .step-dot.active  { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .step-dot.done    { background: var(--accent);  color: #fff; border-color: var(--accent); }
+    .step-line { flex: 1; height: 2px; background: var(--border); max-width: 36px; transition: background 0.3s; }
+    .step-line.done   { background: var(--accent); }
+    .step-label {
+      position: absolute; top: 36px; left: 50%; transform: translateX(-50%);
+      font-size: 0.62rem; white-space: nowrap; color: var(--text-dim); font-weight: 500;
+    }
+    .step-dot.active .step-label { color: var(--primary-light); }
+    .step-dot.done   .step-label { color: var(--accent); }
+
+    .step-panel { display: none; }
+    .step-panel.active { display: block; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+    .step-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; gap: 10px; }
+
+    /* Activity level cards */
+    .activity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .activity-card {
+      padding: 10px; border: 2px solid var(--border); border-radius: 10px;
+      cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .activity-card:hover  { border-color: var(--primary-light); }
+    .activity-card.selected { border-color: var(--primary); background: #eff6ff; }
+    .activity-card .icon  { font-size: 1.5rem; margin-bottom: 4px; }
+    .activity-card .label { font-size: 0.82rem; font-weight: 700; color: var(--text); }
+    .activity-card .sub   { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* Medical condition checkboxes */
+    .condition-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .condition-item {
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+      border: 1px solid var(--border); border-radius: 7px; cursor: pointer;
+      font-size: 0.82rem; color: var(--text-muted); transition: all 0.15s;
+    }
+    .condition-item:hover { border-color: var(--primary-light); color: var(--text); }
+    .condition-item.checked { border-color: var(--primary); background: #eff6ff; color: var(--text); }
+    .condition-item input[type="checkbox"] { accent-color: var(--primary); width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* Goal warning */
+    .goal-warning {
+      display: none; gap: 8px; align-items: flex-start;
+      background: #fef3c7; border: 1px solid #fde68a;
+      border-radius: 4px; padding: 10px 12px; margin-bottom: 10px;
+      font-size: 0.82rem; color: #92400e; line-height: 1.5;
+    }
+    .goal-warning.show { display: flex; }
+
+    /* Summary */
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .summary-item { padding: 9px 12px; background: var(--bg-input); border-radius: 8px; }
+    .summary-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    .summary-value { font-size: 0.88rem; font-weight: 600; margin-top: 2px; }
+
+    /* Terms */
+    .terms-box {
+      background: var(--bg-input); border-radius: 8px; padding: 12px;
+      font-size: 0.78rem; color: var(--text-muted); max-height: 130px;
+      overflow-y: auto; margin-bottom: 10px; line-height: 1.6;
+    }
+
+    /* BMI preview */
+    .bmi-preview {
+      padding: 9px 12px; background: var(--bg-input); border-radius: 8px;
+      margin-bottom: 12px; font-size: 0.85rem; display: none;
+    }
+  </style>
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-box" style="max-width:480px;">
+
+    <div class="auth-logo">
+      <h1>Fit<span>Track</span></h1>
+      <p>Your Nepali-friendly fitness &amp; nutrition companion</p>
+    </div>
+
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="loginTab"    onclick="switchTab('login')">Sign In</div>
+        <div class="auth-tab"        id="registerTab" onclick="switchTab('register')">Sign Up</div>
+      </div>
+
+      <div id="alertBox"></div>
+
+      <!-- ==================== SIGN IN ==================== -->
+      <div id="loginSection">
+        <form id="loginForm">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" class="form-control" id="loginEmail" placeholder="your@email.com" required />
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" class="form-control" id="loginPassword" placeholder="••••••••" required />
+          </div>
+          <button type="submit" class="btn btn-primary btn-full" id="loginBtn">Sign In</button>
+          <p class="text-center text-sm text-muted mt-4">
+            Don't have an account? <a href="#" onclick="switchTab('register');return false;">Sign Up</a>
+          </p>
+        </form>
+      </div>
+
+      <!-- ==================== SIGN UP ==================== -->
+      <div id="registerSection" class="hidden">
+
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+          <div class="step-dot active" id="dot1">1<span class="step-label">Account</span></div>
+          <div class="step-line"  id="line1"></div>
+          <div class="step-dot"   id="dot2">2<span class="step-label">Personal</span></div>
+          <div class="step-line"  id="line2"></div>
+          <div class="step-dot"   id="dot3">3<span class="step-label">Health</span></div>
+          <div class="step-line"  id="line3"></div>
+          <div class="step-dot"   id="dot4">4<span class="step-label">Goals</span></div>
+          <div class="step-line"  id="line4"></div>
+          <div class="step-dot"   id="dot5">5<span class="step-label">Review</span></div>
+        </div>
+
+        <!-- ---- Step 1: Account ---- -->
+        <div class="step-panel active" id="step1">
+          <h3 style="font-size:1rem;margin-bottom:14px;">Create your account</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>First Name *</label>
+              <input type="text" class="form-control" id="regFirstName" placeholder="Ram" />
+            </div>
+            <div class="form-group">
+              <label>Last Name *</label>
+              <input type="text" class="form-control" id="regLastName" placeholder="Sharma" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" class="form-control" id="regEmail" placeholder="your@email.com" />
+          </div>
+          <div class="form-group">
+            <label>Password *</label>
+            <input type="password" class="form-control" id="regPassword" placeholder="Min 6 characters" />
+          </div>
+          <div class="form-group">
+            <label>Confirm Password *</label>
+            <input type="password" class="form-control" id="regConfirm" placeholder="Repeat password" />
+          </div>
+          <div class="step-nav">
+            <span class="text-xs text-muted">Step 1 of 5</span>
+            <button type="button" class="btn btn-primary" onclick="nextStep(1)">Next →</button>
+          </div>
+        </div>
+
+        <!-- ---- Step 2: Personal Info ---- -->
+        <div class="step-panel" id="step2">
+          <h3 style="font-size:1rem;margin-bottom:14px;">Personal information</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Age *</label>
+              <input type="number" class="form-control" id="regAge" placeholder="25" min="10" max="100" />
+            </div>
+            <div class="form-group">
+              <label>Gender *</label>
+              <select class="form-control" id="regGender">
+                <option value="">Select...</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+                <option value="OTHER">Other / Prefer not to say</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Height (cm) *</label>
+              <input type="number" class="form-control" id="regHeight" placeholder="170" min="100" max="250" step="0.1" oninput="updateBmi()" />
+            </div>
+            <div class="form-group">
+              <label>Current Weight (kg) *</label>
+              <input type="number" class="form-control" id="regWeight" placeholder="70" min="20" max="300" step="0.1" oninput="updateBmi()" />
+            </div>
+          </div>
+          <div class="bmi-preview" id="bmiPreview">
+            <span class="text-muted text-xs">Your BMI: </span>
+            <strong id="bmiVal"></strong>
+            <span id="bmiCat" style="margin-left:6px;font-size:0.8rem;"></span>
+          </div>
+          <div class="step-nav">
+            <button type="button" class="btn btn-ghost" onclick="prevStep(2)">← Back</button>
+            <span class="text-xs text-muted">Step 2 of 5</span>
+            <button type="button" class="btn btn-primary" onclick="nextStep(2)">Next →</button>
+          </div>
+        </div>
+
+        <!-- ---- Step 3: Health & Activity ---- -->
+        <div class="step-panel" id="step3">
+          <h3 style="font-size:1rem;margin-bottom:4px;">Health &amp; Activity Level</h3>
+          <p class="text-muted text-xs mb-4">Helps us personalise safe recommendations for you.</p>
+
+          <div class="form-group">
+            <label>Medical Conditions <span class="text-muted text-xs">(select all that apply)</span></label>
+            <div class="condition-grid" id="conditionGrid">
+              <label class="condition-item"><input type="checkbox" value="DIABETES" />Diabetes</label>
+              <label class="condition-item"><input type="checkbox" value="HIGH_BP" />High Blood Pressure</label>
+              <label class="condition-item"><input type="checkbox" value="THYROID" />Thyroid</label>
+              <label class="condition-item"><input type="checkbox" value="HEART_CONDITION" />Heart Condition</label>
+              <label class="condition-item"><input type="checkbox" value="JOINT_PAIN" />Joint / Knee Pain</label>
+              <label class="condition-item"><input type="checkbox" value="ASTHMA" />Asthma</label>
+              <label class="condition-item"><input type="checkbox" value="PCOD" />PCOD / PCOS</label>
+              <label class="condition-item" id="noneItem"><input type="checkbox" value="NONE" />None of the above</label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Current Activity Level *</label>
+            <div class="activity-grid">
+              <div class="activity-card" onclick="pickActivity(this,'SEDENTARY')">
+                <div class="icon">🛋️</div>
+                <div class="label">Sedentary</div>
+                <div class="sub">Normal daily life</div>
+              </div>
+              <div class="activity-card" onclick="pickActivity(this,'LIGHTLY_ACTIVE')">
+                <div class="icon">🚶</div>
+                <div class="label">Lightly Active</div>
+                <div class="sub">Occasional walking</div>
+              </div>
+              <div class="activity-card" onclick="pickActivity(this,'GYM_GOING')">
+                <div class="icon">🏋️</div>
+                <div class="label">Gym-Going</div>
+                <div class="sub">3–5x per week</div>
+              </div>
+              <div class="activity-card" onclick="pickActivity(this,'VERY_ACTIVE')">
+                <div class="icon">⚡</div>
+                <div class="label">Very Active</div>
+                <div class="sub">Daily intense training</div>
+              </div>
+            </div>
+            <input type="hidden" id="regActivity" />
+          </div>
+
+          <div class="step-nav">
+            <button type="button" class="btn btn-ghost" onclick="prevStep(3)">← Back</button>
+            <span class="text-xs text-muted">Step 3 of 5</span>
+            <button type="button" class="btn btn-primary" onclick="nextStep(3)">Next →</button>
+          </div>
+        </div>
+
+        <!-- ---- Step 4: Goals ---- -->
+        <div class="step-panel" id="step4">
+          <h3 style="font-size:1rem;margin-bottom:14px;">Your fitness goals</h3>
+
+          <div class="form-group">
+            <label>Primary Goal *</label>
+            <select class="form-control" id="regGoal">
+              <option value="">Select goal...</option>
+              <option value="WEIGHT_LOSS">Weight Loss — Lose body fat</option>
+              <option value="WEIGHT_GAIN">Weight Gain — Increase body mass</option>
+              <option value="MUSCLE_GAIN">Muscle Gain — Build strength &amp; muscle</option>
+              <option value="MAINTENANCE">Maintenance — Stay at current weight</option>
+              <option value="ENDURANCE">Build Endurance — Cardio &amp; stamina</option>
+              <option value="FLEXIBILITY">Improve Flexibility — Yoga / stretching</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Target Weight (kg) *</label>
+              <input type="number" class="form-control" id="regTarget" placeholder="65" min="20" max="300" step="0.1" oninput="checkGoal()" />
+            </div>
+            <div class="form-group">
+              <label>Goal Timeline *</label>
+              <select class="form-control" id="regTimeline" onchange="checkGoal()">
+                <option value="">Select...</option>
+                <option value="1_MONTH">1 Month</option>
+                <option value="3_MONTHS">3 Months</option>
+                <option value="6_MONTHS">6 Months</option>
+                <option value="1_YEAR">1 Year</option>
+                <option value="ONGOING">Ongoing / No deadline</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="goal-warning" id="goalWarn">
+            <span style="flex-shrink:0;">⚠️</span>
+            <span id="goalWarnText"></span>
+          </div>
+
+          <div class="step-nav">
+            <button type="button" class="btn btn-ghost" onclick="prevStep(4)">← Back</button>
+            <span class="text-xs text-muted">Step 4 of 5</span>
+            <button type="button" class="btn btn-primary" onclick="nextStep(4)">Next →</button>
+          </div>
+        </div>
+
+        <!-- ---- Step 5: Review & Terms ---- -->
+        <div class="step-panel" id="step5">
+          <h3 style="font-size:1rem;margin-bottom:14px;">Review &amp; confirm</h3>
+
+          <div class="summary-grid" id="summaryGrid"></div>
+
+          <div class="form-group">
+            <label>Terms &amp; Conditions *</label>
+            <div class="terms-box">
+              <strong>FitTrack Terms &amp; Conditions</strong><br/><br/>
+              1. <strong>Health Disclaimer:</strong> FitTrack provides general fitness and nutrition guidance only. It is not a substitute for professional medical advice. Always consult a qualified healthcare provider before starting any exercise or diet program, especially if you have a medical condition.<br/><br/>
+              2. <strong>Data Usage:</strong> Your personal health data (weight, medical conditions, activity) is stored securely and used only to provide personalised recommendations within this application.<br/><br/>
+              3. <strong>Accuracy:</strong> You are responsible for entering accurate information. Inaccurate data may lead to unsuitable recommendations.<br/><br/>
+              4. <strong>Liability:</strong> FitTrack and its developers are not liable for any injury, health complications, or adverse outcomes from following generated recommendations.<br/><br/>
+              5. <strong>Age Requirement:</strong> You must be at least 10 years old. Users under 18 should have parental guidance.<br/><br/>
+              6. <strong>Nepal Context:</strong> Nutritional suggestions are tailored to Nepali dietary habits. Individual results may vary.
+            </div>
+            <label class="condition-item" id="termsLabel" style="margin-top:6px;">
+              <input type="checkbox" id="termsCheck" onchange="document.getElementById('termsLabel').classList.toggle('checked', this.checked)" />
+              I have read and agree to the Terms &amp; Conditions *
+            </label>
+          </div>
+
+          <div id="registerAlert"></div>
+
+          <div class="step-nav">
+            <button type="button" class="btn btn-ghost" onclick="prevStep(5)">← Back</button>
+            <button type="button" class="btn btn-accent" id="submitBtn" onclick="submitRegister()" style="flex:1;">
+              Create Account
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /registerSection -->
+    </div><!-- /auth-card -->
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+  // Already logged in → skip to dashboard
+  if (localStorage.getItem('token')) window.location.href = 'dashboard.html';
+
+  // Deep-link: login.html#register opens the register tab directly
+  if (window.location.hash === '#register') switchTab('register');
+
+  // ==================== Tab ====================
+  function switchTab(tab) {
+    document.getElementById('loginSection').classList.toggle('hidden', tab !== 'login');
+    document.getElementById('registerSection').classList.toggle('hidden', tab !== 'register');
+    document.getElementById('loginTab').classList.toggle('active', tab === 'login');
+    document.getElementById('registerTab').classList.toggle('active', tab === 'register');
+    document.getElementById('alertBox').innerHTML = '';
+  }
+
+  // ==================== Step navigation ====================
+  const STEPS = 5;
+  const LABELS = ['Account', 'Personal', 'Health', 'Goals', 'Review'];
+
+  function goToStep(n) {
+    document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`step${n}`).classList.add('active');
+
+    for (let i = 1; i <= STEPS; i++) {
+      const dot = document.getElementById(`dot${i}`);
+      dot.className = 'step-dot' + (i < n ? ' done' : i === n ? ' active' : '');
+      dot.innerHTML = (i < n ? '✓' : i) + `<span class="step-label">${LABELS[i-1]}</span>`;
+    }
+    for (let i = 1; i < STEPS; i++) {
+      document.getElementById(`line${i}`).className = 'step-line' + (i < n ? ' done' : '');
+    }
+  }
+
+  function nextStep(from) {
+    if (!validateStep(from)) return;
+    if (from + 1 === 5) buildSummary();
+    goToStep(from + 1);
+  }
+  function prevStep(from) { goToStep(from - 1); }
+
+  // ==================== Validation ====================
+  function validateStep(step) {
+    document.getElementById('alertBox').innerHTML = '';
+
+    if (step === 1) {
+      const fn = v('regFirstName'), ln = v('regLastName');
+      const email = v('regEmail'), pw = v('regPassword'), pw2 = v('regConfirm');
+      if (!fn) return fail('First name is required.');
+      if (!ln) return fail('Last name is required.');
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail('Enter a valid email address.');
+      if (pw.length < 6) return fail('Password must be at least 6 characters.');
+      if (pw !== pw2) return fail('Passwords do not match.');
+    }
+
+    if (step === 2) {
+      const age = +v('regAge'), height = +v('regHeight'), weight = +v('regWeight');
+      const gender = v('regGender');
+      if (!age || age < 10 || age > 100) return fail('Age must be between 10 and 100.');
+      if (!gender) return fail('Please select your gender.');
+      if (!height || height < 100 || height > 250) return fail('Height must be between 100 and 250 cm.');
+      if (!weight || weight < 20 || weight > 300) return fail('Weight must be between 20 and 300 kg.');
+      const bmi = weight / ((height / 100) ** 2);
+      if (bmi < 10 || bmi > 65) return fail('The height/weight combination appears unrealistic. Please double-check your values.');
+    }
+
+    if (step === 3) {
+      if (!v('regActivity')) return fail('Please select your current activity level.');
+    }
+
+    if (step === 4) {
+      const target = +v('regTarget'), timeline = v('regTimeline'), goal = v('regGoal');
+      if (!goal) return fail('Please select your primary goal.');
+      if (!target || target < 20 || target > 300) return fail('Target weight must be between 20 and 300 kg.');
+      if (!timeline) return fail('Please select a goal timeline.');
+    }
+
+    return true;
+  }
+
+  function v(id) { return document.getElementById(id).value.trim(); }
+  function fail(msg) { showAlert('alertBox', msg, 'error'); return false; }
+
+  // ==================== BMI preview ====================
+  function updateBmi() {
+    const h = +v('regHeight'), w = +v('regWeight');
+    const el = document.getElementById('bmiPreview');
+    if (h >= 100 && w >= 20) {
+      const bmi = (w / ((h / 100) ** 2)).toFixed(1);
+      const cats = [
+        { max: 18.5, label: 'Underweight', color: '#2563eb' },
+        { max: 25,   label: 'Normal',      color: '#16a34a' },
+        { max: 30,   label: 'Overweight',  color: '#d97706' },
+        { max: 999,  label: 'Obese',       color: '#dc2626' },
+      ];
+      const cat = cats.find(c => bmi < c.max);
+      document.getElementById('bmiVal').textContent = bmi;
+      document.getElementById('bmiCat').textContent = `(${cat.label})`;
+      document.getElementById('bmiCat').style.color = cat.color;
+      el.style.display = 'block';
+    } else {
+      el.style.display = 'none';
+    }
+  }
+
+  // ==================== Medical conditions ====================
+  document.querySelectorAll('#conditionGrid .condition-item').forEach(label => {
+    label.addEventListener('change', () => {
+      const cb = label.querySelector('input');
+      label.classList.toggle('checked', cb.checked);
+
+      // Selecting a real condition unchecks "None"
+      if (cb.value !== 'NONE' && cb.checked) {
+        const noneItem = document.getElementById('noneItem');
+        noneItem.querySelector('input').checked = false;
+        noneItem.classList.remove('checked');
+      }
+      // Selecting "None" unchecks all others
+      if (cb.value === 'NONE' && cb.checked) {
+        document.querySelectorAll('#conditionGrid input[type="checkbox"]').forEach(c => {
+          if (c.value !== 'NONE') { c.checked = false; c.closest('.condition-item').classList.remove('checked'); }
+        });
+      }
+    });
+  });
+
+  function getConditions() {
+    return [...document.querySelectorAll('#conditionGrid input:checked')]
+      .map(c => c.value).filter(v => v !== 'NONE');
+  }
+
+  // ==================== Activity level ====================
+  function pickActivity(card, value) {
+    document.querySelectorAll('.activity-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    document.getElementById('regActivity').value = value;
+  }
+
+  // ==================== Goal feasibility check ====================
+  function checkGoal() {
+    const w = +v('regWeight'), t = +v('regTarget'), timeline = v('regTimeline');
+    const warn = document.getElementById('goalWarn');
+    warn.classList.remove('show');
+    if (!w || !t || !timeline || timeline === 'ONGOING') return;
+
+    const months = { '1_MONTH': 1, '3_MONTHS': 3, '6_MONTHS': 6, '1_YEAR': 12 }[timeline] || 3;
+    const diff = w - t;
+    const maxLoss = 4 * months;
+    const maxGain = 2 * months;
+
+    let msg = '';
+    if (diff > maxLoss) {
+      msg = `Losing ${diff.toFixed(1)} kg in ${months} month(s) is aggressive. Safe weight loss is about ${maxLoss} kg in this timeframe. Consider a longer timeline for sustainable results.`;
+    } else if (-diff > maxGain) {
+      msg = `Gaining ${(-diff).toFixed(1)} kg in ${months} month(s) is aggressive. Safe weight gain is about ${maxGain} kg in this timeframe.`;
+    }
+
+    const h = +v('regHeight');
+    if (h >= 100 && t) {
+      const targetBmi = t / ((h / 100) ** 2);
+      if (targetBmi < 15) msg += (msg ? ' Also: ' : '') + 'This target weight would result in a dangerously low BMI. Please reconsider.';
+      else if (targetBmi > 45) msg += (msg ? ' Also: ' : '') + 'This target weight would result in a very high BMI. Please reconsider.';
+    }
+
+    if (msg) {
+      document.getElementById('goalWarnText').textContent = msg;
+      warn.classList.add('show');
+    }
+  }
+
+  // ==================== Summary ====================
+  function buildSummary() {
+    const conditions = getConditions();
+    const timeline = v('regTimeline').replace(/_/g, ' ');
+    const goal = v('regGoal').replace(/_/g, ' ');
+    const activity = v('regActivity').replace(/_/g, ' ');
+
+    const rows = [
+      ['Name',           `${v('regFirstName')} ${v('regLastName')}`],
+      ['Email',          v('regEmail')],
+      ['Age',            `${v('regAge')} years`],
+      ['Gender',         v('regGender')],
+      ['Height',         `${v('regHeight')} cm`],
+      ['Current Weight', `${v('regWeight')} kg`],
+      ['Target Weight',  `${v('regTarget')} kg`],
+      ['Goal',           goal],
+      ['Timeline',       timeline],
+      ['Activity Level', activity],
+      ['Conditions',     conditions.length ? conditions.join(', ').replace(/_/g,' ') : 'None'],
+    ];
+
+    document.getElementById('summaryGrid').innerHTML = rows.map(([l, val]) => `
+      <div class="summary-item">
+        <div class="summary-label">${l}</div>
+        <div class="summary-value">${val || '—'}</div>
+      </div>`).join('');
+  }
+
+  // ==================== Submit registration ====================
+  async function submitRegister() {
+    if (!document.getElementById('termsCheck').checked) {
+      showAlert('registerAlert', 'You must accept the Terms &amp; Conditions to continue.', 'error');
+      return;
+    }
+    const btn = document.getElementById('submitBtn');
+    setLoading(btn, true);
+    document.getElementById('registerAlert').innerHTML = '';
+
+    try {
+      const payload = {
+        firstName:         v('regFirstName'),
+        lastName:          v('regLastName'),
+        email:             v('regEmail'),
+        password:          document.getElementById('regPassword').value,
+        age:               +v('regAge'),
+        gender:            v('regGender'),
+        heightCm:          +v('regHeight'),
+        weightKg:          +v('regWeight'),
+        targetWeightKg:    +v('regTarget'),
+        fitnessGoal:       v('regGoal'),
+        goalTimeline:      v('regTimeline'),
+        activityLevel:     v('regActivity'),
+        medicalConditions: getConditions(),
+      };
+
+      await api.register(payload);
+      const res = await api.login({ email: payload.email, password: payload.password });
+      storeUser(res);
+      window.location.href = 'dashboard.html';
+    } catch (err) {
+      showAlert('registerAlert', err.message || 'Registration failed. Please try again.', 'error');
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+  // ==================== Login ====================
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    setLoading(btn, true);
+    try {
+      const res = await api.login({
+        email:    document.getElementById('loginEmail').value,
+        password: document.getElementById('loginPassword').value,
+      });
+      storeUser(res);
+      window.location.href = 'dashboard.html';
+    } catch (_) {
+      showAlert('alertBox', 'Invalid email or password.', 'error');
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+
+  function storeUser(res) {
+    localStorage.setItem('token',     res.token);
+    localStorage.setItem('userId',    res.user.id);
+    localStorage.setItem('email',     res.user.email);
+    localStorage.setItem('firstName', res.user.firstName || '');
+    localStorage.setItem('lastName',  res.user.lastName  || '');
+  }
+</script>
+</body>
+</html>

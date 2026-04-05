@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitTrack — Progress</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* ── Tab nav ─────────────────────────────────────── */
+    .progress-tabs {
+      display: flex; gap: .5rem; margin-bottom: 1.75rem; flex-wrap: wrap;
+    }
+    .ptab {
+      padding: .5rem 1.2rem; border-radius: 10px; border: 1px solid var(--border);
+      background: var(--card-bg); color: var(--text-secondary);
+      cursor: pointer; font-size: .88rem; font-weight: 600;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .ptab.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    .ptab-panel { display: none; }
+    .ptab-panel.active { display: block; }
+
+    /* ── Stat cards row ──────────────────────────────── */
+    .stat-row { display: grid; grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.1rem; }
+    .stat-box .sb-val { font-size: 1.6rem; font-weight: 800; }
+    .stat-box .sb-lbl { font-size: .75rem; color: var(--text-secondary); margin-top: .2rem; }
+    .stat-box .sb-sub { font-size: .72rem; color: var(--text-secondary); opacity: .7; margin-top: .15rem; }
+    .c-blue   .sb-val { color: #2563eb; }
+    .c-green  .sb-val { color: #16a34a; }
+    .c-orange .sb-val { color: #d97706; }
+    .c-purple .sb-val { color: #6d28d9; }
+    .c-red    .sb-val { color: #dc2626; }
+
+    /* ── Chart cards ─────────────────────────────────── */
+    .chart-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.25rem; margin-bottom: 1.25rem;
+    }
+    .chart-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+    .chart-wrap { position: relative; }
+
+    /* ── Section header ──────────────────────────────── */
+    .sec-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      margin: 1.5rem 0 1rem; flex-wrap: wrap; gap: .75rem;
+    }
+    .sec-hd h2 { font-size: 1.1rem; font-weight: 700; }
+
+    /* ── Table ───────────────────────────────────────── */
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    th { text-align: left; padding: .6rem .85rem; color: var(--text-secondary); font-weight: 600; font-size: .78rem; border-bottom: 1px solid var(--border); }
+    td { padding: .6rem .85rem; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    .change-pos { color: #10b981; font-weight: 600; }
+    .change-neg { color: #ef4444; font-weight: 600; }
+    .change-zero { color: var(--text-secondary); }
+
+    /* ── Measurement form ────────────────────────────── */
+    .measure-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;
+    }
+    .unit-toggle {
+      display: flex; gap: .5rem; align-items: center; margin-bottom: 1rem;
+    }
+    .unit-btn {
+      padding: .3rem .9rem; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--card-bg); color: var(--text-secondary);
+      cursor: pointer; font-size: .82rem; font-weight: 600;
+      transition: all .15s;
+    }
+    .unit-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+    @keyframes pulse-border {
+      0%, 100% { border-color: #ef4444; }
+      50%       { border-color: #7f1d1d; }
+    }
+    .undertrained-tag {
+      font-size: .65rem; background: #fee2e2; color: #991b1b;
+      border-radius: 4px; padding: .1rem .4rem; margin-top: .2rem;
+      display: inline-block;
+    }
+
+    /* ── SVG body map ────────────────────────────────── */
+    .body-svg { width: 130px; }
+    .bg-silhouette { fill: #e5e7eb; }
+
+    /* ── Modals ──────────────────────────────────────── */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:1000; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { background:var(--card-bg); border:1px solid var(--border); border-radius:16px; padding:1.5rem; width:min(520px,95vw); max-height:90vh; overflow-y:auto; }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; }
+    .modal-title { font-size:1.1rem; font-weight:700; }
+    .modal-close { background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.2rem; }
+    .form-group { margin-bottom:.9rem; }
+    .form-group label { display:block; font-size:.82rem; color:var(--text-secondary); margin-bottom:.4rem; }
+    .form-control { width:100%; padding:.55rem .85rem; background:var(--input-bg,#f9fafb); border:1px solid var(--border); border-radius:4px; color:var(--text); font-size:.9rem; box-sizing:border-box; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+    @media(max-width:480px){ .form-row { grid-template-columns:1fr; } }
+
+    /* ── Loading ─────────────────────────────────────── */
+    .loading-row td { color: var(--text-secondary); text-align: center; padding: 2rem; }
+    .spinner-sm {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebarContainer"></div>
+
+  <main class="main-content">
+    <div class="container">
+
+      <div class="sec-hd" style="margin-top:0;">
+        <h1 style="font-size:1.5rem;font-weight:800;">Progress Tracker</h1>
+        <div style="display:flex;gap:.6rem;">
+          <button class="btn btn-ghost btn-sm" onclick="openWeightModal()">+ Log Weight</button>
+          <button class="btn btn-primary btn-sm" onclick="openMeasureModal()">+ Measurements</button>
+        </div>
+      </div>
+
+      <!-- Tab nav -->
+      <div class="progress-tabs">
+        <button class="ptab active" onclick="switchTab('weekly')">Weekly Charts</button>
+        <button class="ptab" onclick="switchTab('measurements')">Body Measurements</button>
+        <button class="ptab" onclick="switchTab('weight')">Weight Log</button>
+      </div>
+
+      <!-- ══════════════ TAB: WEEKLY ══════════════ -->
+      <div class="ptab-panel active" id="panel-weekly">
+
+        <!-- Summary stats -->
+        <div class="stat-row" id="weeklyStats">
+          <div class="stat-box c-blue"><div class="sb-val" id="wk-calIn">—</div><div class="sb-lbl">Avg Calories In</div><div class="sb-sub">kcal / day</div></div>
+          <div class="stat-box c-orange"><div class="sb-val" id="wk-calOut">—</div><div class="sb-lbl">Avg Cal Burned</div><div class="sb-sub">exercise / day</div></div>
+          <div class="stat-box c-green"><div class="sb-val" id="wk-protein">—</div><div class="sb-lbl">Avg Protein</div><div class="sb-sub">g / day</div></div>
+          <div class="stat-box c-purple"><div class="sb-val" id="wk-weightChange">—</div><div class="sb-lbl">Weight Change</div><div class="sb-sub">this week</div></div>
+          <div class="stat-box c-orange"><div class="sb-val" id="wk-gymDays">—</div><div class="sb-lbl">Gym Sessions</div><div class="sb-sub">this week</div></div>
+          <div class="stat-box c-blue"><div class="sb-val" id="wk-cardioDays">—</div><div class="sb-lbl">Cardio Sessions</div><div class="sb-sub">this week</div></div>
+        </div>
+
+        <!-- Daily breakdown table -->
+        <div class="chart-card">
+          <h3>Daily Breakdown</h3>
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Cal In (kcal)</th>
+                  <th>Burned (kcal)</th>
+                  <th>Protein (g)</th>
+                  <th>Carbs (g)</th>
+                  <th>Fat (g)</th>
+                  <th>Weight (kg)</th>
+                </tr>
+              </thead>
+              <tbody id="weeklyTableBody">
+                <tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:1.5rem;">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══════════════ TAB: MEASUREMENTS ══════════════ -->
+      <div class="ptab-panel" id="panel-measurements">
+
+        <div class="sec-hd">
+          <h2>Body Measurements History</h2>
+          <button class="btn btn-primary btn-sm" onclick="openMeasureModal()">+ Log Measurements</button>
+        </div>
+
+        <div class="chart-card" id="measurementTableCard">
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Chest</th><th>Waist</th><th>Hips</th>
+                  <th>L Arm</th><th>R Arm</th>
+                  <th>L Thigh</th><th>R Thigh</th><th>Neck</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="measureTableBody">
+                <tr class="loading-row"><td colspan="10"><span class="spinner-sm"></span> Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+
+      </div>
+
+      <!-- ══════════════ TAB: WEIGHT LOG ══════════════ -->
+      <div class="ptab-panel" id="panel-weight">
+
+        <div class="stat-row" id="weightStats">
+          <div class="stat-box c-blue"><div class="sb-val" id="curWeight">—</div><div class="sb-lbl">Current Weight</div><div class="sb-sub">kg</div></div>
+          <div class="stat-box c-green"><div class="sb-val" id="targetWeight">—</div><div class="sb-lbl">Target Weight</div><div class="sb-sub">kg</div></div>
+          <div class="stat-box c-orange"><div class="sb-val" id="weightToGo">—</div><div class="sb-lbl">To Go</div><div class="sb-sub">kg</div></div>
+          <div class="stat-box c-purple"><div class="sb-val" id="bmiVal">—</div><div class="sb-lbl">BMI</div><div class="sb-sub" id="bmiLabel"></div></div>
+        </div>
+
+        <div class="chart-card">
+          <h3>Weight Log</h3>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Weight (kg)</th><th>Change</th><th>Notes</th></tr></thead>
+              <tbody id="weightTableBody">
+                <tr class="loading-row"><td colspan="4"><span class="spinner-sm"></span> Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div><!-- .container -->
+  </main>
+</div>
+
+<!-- ════════════════ Log Weight Modal ════════════════ -->
+<div class="modal-overlay" id="weightModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Log Weight</span>
+      <button class="modal-close" onclick="closeWeightModal()">✕</button>
+    </div>
+    <div id="weightAlert"></div>
+    <form id="weightForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Weight (kg) *</label>
+          <input type="number" class="form-control" id="weightKg" placeholder="70.5" step="0.1" min="20" max="300" required />
+        </div>
+        <div class="form-group">
+          <label>Date &amp; Time</label>
+          <input type="datetime-local" class="form-control" id="weightTime" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <input type="text" class="form-control" id="weightNotes" placeholder="Morning weight, after workout…" />
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary" id="saveWeightBtn">Save</button>
+        <button type="button" class="btn btn-ghost" onclick="closeWeightModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ════════════════ Log Measurements Modal ════════════════ -->
+<div class="modal-overlay" id="measureModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Log Body Measurements</span>
+      <button class="modal-close" onclick="closeMeasureModal()">✕</button>
+    </div>
+    <div id="measureAlert"></div>
+
+    <div class="unit-toggle">
+      <span style="font-size:.82rem;color:var(--text-secondary);margin-right:.25rem;">Unit:</span>
+      <button type="button" class="unit-btn active" id="unitCm" onclick="setUnit('CM')">cm</button>
+      <button type="button" class="unit-btn" id="unitInch" onclick="setUnit('INCH')">inch</button>
+    </div>
+
+    <form id="measureForm">
+      <div class="measure-grid">
+        <div class="form-group"><label>Chest (<span class="unit-lbl">cm</span>)</label><input type="number" class="form-control" id="mChest" step="0.1" placeholder="96"/></div>
+        <div class="form-group"><label>Waist (<span class="unit-lbl">cm</span>)</label><input type="number" class="form-control" id="mWaist" step="0.1" placeholder="82"/></div>
+        <div class="form-group"><label>Hips (<span class="unit-lbl">cm</span>)</label><input type="number" class="form-control" id="mHips" step="0.1" placeholder="98"/></div>
+        <div class="form-group"><label>Left Arm (<span class="unit-lbl">cm</span>)</label><input type="number" class="form-control" id="mLeftArm" step="0.1" placeholder="35"/></div>
+        <div class="form-group"><label>Right Arm (<span class="unit-lbl">cm</span>)</label><input type="number" class="form-control" id="mRightArm" step="0.1" placeholder="35"/></div>
+        <div class="form-group"><label>Left Thigh (<span class="unit-lbl">cm</span>)</label><input type="number" class="form-control" id="mLeftThigh" step="0.1" placeholder="55"/></div>
+        <div class="form-group"><label>Right Thigh (<span class="unit-lbl">cm</span>)</label><input type="number" class="form-control" id="mRightThigh" step="0.1" placeholder="55"/></div>
+        <div class="form-group"><label>Neck (<span class="unit-lbl">cm</span>)</label><input type="number" class="form-control" id="mNeck" step="0.1" placeholder="38"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" class="form-control" id="mDate" />
+        </div>
+        <div class="form-group">
+          <label>Notes (optional)</label>
+          <input type="text" class="form-control" id="mNotes" placeholder="Morning, after workout…" />
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary" id="saveMeasureBtn">Save</button>
+        <button type="button" class="btn btn-ghost" onclick="closeMeasureModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/sidebar.js"></script>
+<script>
+requireAuth();
+document.getElementById('sidebarContainer').innerHTML = renderSidebar();
+initSidebar();
+
+// ── Date defaults ────────────────────────────────────────
+const now = new Date();
+now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+document.getElementById('weightTime').value = now.toISOString().slice(0, 16);
+document.getElementById('mDate').value = now.toISOString().slice(0, 10);
+
+// ── Tab switching ─────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.ptab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`[onclick="switchTab('${name}')"]`).classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+// ── Main load ────────────────────────────────────────────
+async function loadAll() {
+  await Promise.all([
+    loadWeekly(),
+    loadWeightLog(),
+    loadMeasurements(),
+  ]);
+}
+
+// ══════════════════════════════════════════════════════════
+// WEEKLY TABLE
+// ══════════════════════════════════════════════════════════
+async function loadWeekly() {
+  try {
+    const w = await api.getWeeklyProgress();
+
+    document.getElementById('wk-calIn').textContent      = Math.round(w.avgCaloriesIn);
+    document.getElementById('wk-calOut').textContent     = Math.round(w.avgCaloriesOutExercise);
+    document.getElementById('wk-protein').textContent    = Math.round(w.avgProtein) + 'g';
+    document.getElementById('wk-gymDays').textContent    = w.totalGymSessions;
+    document.getElementById('wk-cardioDays').textContent = w.totalCardioSessions;
+
+    if (w.weekWeightChange !== null && w.weekWeightChange !== undefined) {
+      const sign = w.weekWeightChange >= 0 ? '+' : '';
+      document.getElementById('wk-weightChange').textContent = sign + w.weekWeightChange + ' kg';
+    } else {
+      document.getElementById('wk-weightChange').textContent = '—';
+    }
+
+    const tbody = document.getElementById('weeklyTableBody');
+    if (!w.days || !w.days.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:1.5rem;">No data for this week yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = w.days.map(d => `
+      <tr>
+        <td style="font-weight:600;">${d.dayLabel}</td>
+        <td>${d.caloriesIn ? Math.round(d.caloriesIn) : '—'}</td>
+        <td>${d.caloriesOutExercise ? Math.round(d.caloriesOutExercise) : '—'}</td>
+        <td>${d.proteinGrams ? Math.round(d.proteinGrams) : '—'}</td>
+        <td>${d.carbsGrams   ? Math.round(d.carbsGrams)   : '—'}</td>
+        <td>${d.fatGrams     ? Math.round(d.fatGrams)     : '—'}</td>
+        <td>${d.weightKg     ? d.weightKg                 : '—'}</td>
+      </tr>`).join('');
+
+  } catch (e) {
+    console.error('Weekly load failed:', e);
+    document.getElementById('weeklyTableBody').innerHTML =
+      '<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:1.5rem;">Failed to load weekly data.</td></tr>';
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// WEIGHT LOG
+// ══════════════════════════════════════════════════════════
+async function loadWeightLog() {
+  try {
+    const [profile, logs] = await Promise.all([
+      api.getProfile().catch(() => null),
+      api.getWeightLogs()
+    ]);
+
+    if (profile) {
+      document.getElementById('targetWeight').textContent = profile.targetWeightKg ?? '—';
+    }
+    if (logs.length) {
+      const cur = logs[0].weightKg;
+      document.getElementById('curWeight').textContent = cur;
+      const target = profile?.targetWeightKg;
+      if (target) document.getElementById('weightToGo').textContent = Math.abs(cur - target).toFixed(1);
+      if (profile?.heightCm) {
+        const bmi = (cur / Math.pow(profile.heightCm / 100, 2)).toFixed(1);
+        document.getElementById('bmiVal').textContent = bmi;
+        document.getElementById('bmiLabel').textContent = getBmiLabel(parseFloat(bmi));
+      }
+    }
+
+    renderWeightTable(logs);
+  } catch (e) { console.error('Weight load failed:', e); }
+}
+
+
+function renderWeightTable(logs) {
+  const tbody = document.getElementById('weightTableBody');
+  if (!logs.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-secondary);padding:2rem;">No weight logged yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = logs.map((log, i) => {
+    const prev = logs[i + 1];
+    let changeHtml = '—';
+    if (prev) {
+      const diff = (log.weightKg - prev.weightKg).toFixed(1);
+      const cls = diff < 0 ? 'change-neg' : diff > 0 ? 'change-pos' : 'change-zero';
+      changeHtml = `<span class="${cls}">${diff > 0 ? '+' : ''}${diff} kg</span>`;
+    }
+    return `<tr>
+      <td>${formatDate(log.loggedAt)}</td>
+      <td style="font-weight:700;">${log.weightKg} kg</td>
+      <td>${changeHtml}</td>
+      <td style="color:var(--text-secondary);font-size:.85rem;">${log.notes || '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function getBmiLabel(bmi) {
+  if (bmi < 18.5) return 'Underweight';
+  if (bmi < 25) return 'Normal';
+  if (bmi < 30) return 'Overweight';
+  return 'Obese';
+}
+
+// ══════════════════════════════════════════════════════════
+// BODY MEASUREMENTS
+// ══════════════════════════════════════════════════════════
+let measurementData = [];
+
+async function loadMeasurements() {
+  try {
+    measurementData = await api.getMeasurements();
+    renderMeasurementTable(measurementData);
+  } catch (e) { console.error('Measurements load failed:', e); }
+}
+
+function renderMeasurementTable(logs) {
+  const tbody = document.getElementById('measureTableBody');
+  if (!logs.length) {
+    tbody.innerHTML = '<tr class="loading-row"><td colspan="10" style="text-align:center;color:var(--text-secondary);">No measurements logged yet. Click "+ Measurements" to start.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = logs.map(m => {
+    const f = (val, chg) => {
+      if (val == null) return '<span style="color:var(--text-secondary);">—</span>';
+      let chgHtml = '';
+      if (chg != null) {
+        const cls = chg > 0 ? 'change-pos' : chg < 0 ? 'change-neg' : 'change-zero';
+        chgHtml = ` <small class="${cls}">(${chg > 0 ? '+' : ''}${chg})</small>`;
+      }
+      return `${val}${chgHtml}`;
+    };
+    return `<tr>
+      <td style="font-weight:600;white-space:nowrap;">${m.loggedDate}</td>
+      <td>${f(m.chestCm, m.chestChange)}</td>
+      <td>${f(m.waistCm, m.waistChange)}</td>
+      <td>${f(m.hipsCm, m.hipsChange)}</td>
+      <td>${f(m.leftArmCm, m.leftArmChange)}</td>
+      <td>${f(m.rightArmCm, m.rightArmChange)}</td>
+      <td>${f(m.leftThighCm, m.leftThighChange)}</td>
+      <td>${f(m.rightThighCm, m.rightThighChange)}</td>
+      <td>${f(m.neckCm, m.neckChange)}</td>
+      <td style="color:var(--text-secondary);font-size:.8rem;">${m.notes || '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+
+// ══════════════════════════════════════════════════════════
+// MODALS — WEIGHT
+// ══════════════════════════════════════════════════════════
+function openWeightModal()  { document.getElementById('weightModal').classList.add('open'); }
+function closeWeightModal() {
+  document.getElementById('weightModal').classList.remove('open');
+  document.getElementById('weightForm').reset();
+  document.getElementById('weightAlert').innerHTML = '';
+}
+
+document.getElementById('weightForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('saveWeightBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const userId = localStorage.getItem('userId');
+    const t = document.getElementById('weightTime').value;
+    await api.logWeight({
+      userId,
+      weightKg: parseFloat(document.getElementById('weightKg').value),
+      notes: document.getElementById('weightNotes').value,
+      loggedAt: t ? new Date(t).toISOString() : new Date().toISOString(),
+    });
+    closeWeightModal();
+    await Promise.all([loadWeightLog(), loadWeekly()]);
+  } catch (err) {
+    document.getElementById('weightAlert').innerHTML =
+      `<div style="color:#dc2626;font-size:.85rem;margin-bottom:.75rem;">${err.message}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+// MODALS — MEASUREMENTS
+// ══════════════════════════════════════════════════════════
+let selectedUnit = 'CM';
+
+function setUnit(unit) {
+  selectedUnit = unit;
+  document.getElementById('unitCm').classList.toggle('active', unit === 'CM');
+  document.getElementById('unitInch').classList.toggle('active', unit === 'INCH');
+  document.querySelectorAll('.unit-lbl').forEach(el => el.textContent = unit === 'CM' ? 'cm' : 'inch');
+}
+
+function openMeasureModal() {
+  document.getElementById('measureModal').classList.add('open');
+}
+function closeMeasureModal() {
+  document.getElementById('measureModal').classList.remove('open');
+  document.getElementById('measureForm').reset();
+  document.getElementById('measureAlert').innerHTML = '';
+  // Reset date
+  document.getElementById('mDate').value = new Date().toISOString().slice(0, 10);
+}
+
+document.getElementById('measureForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('saveMeasureBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const userId = localStorage.getItem('userId');
+    const dateVal = document.getElementById('mDate').value;
+    await api.logMeasurement({
+      userId,
+      loggedDate: dateVal || null,
+      unit: selectedUnit,
+      chest:      parseFloatOrNull('mChest'),
+      waist:      parseFloatOrNull('mWaist'),
+      hips:       parseFloatOrNull('mHips'),
+      leftArm:    parseFloatOrNull('mLeftArm'),
+      rightArm:   parseFloatOrNull('mRightArm'),
+      leftThigh:  parseFloatOrNull('mLeftThigh'),
+      rightThigh: parseFloatOrNull('mRightThigh'),
+      neck:       parseFloatOrNull('mNeck'),
+      notes:      document.getElementById('mNotes').value,
+    });
+    closeMeasureModal();
+    await loadMeasurements();
+    switchTab('measurements');
+  } catch (err) {
+    document.getElementById('measureAlert').innerHTML =
+      `<div style="color:#dc2626;font-size:.85rem;margin-bottom:.75rem;">${err.message}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+});
+
+function parseFloatOrNull(id) {
+  const v = document.getElementById(id).value;
+  return v ? parseFloat(v) : null;
+}
+
+// ══════════════════════════════════════════════════════════
+// Shared formatDate
+// ══════════════════════════════════════════════════════════
+function formatDate(dt) {
+  if (!dt) return '—';
+  return new Date(dt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+loadAll();
+</script>
+</body>
+</html>

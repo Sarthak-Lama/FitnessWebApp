@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitTrack — Recommendations</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* ── Page header ─────────────────────────────────── */
+    .sec-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.5rem; }
+    .sec-hd h1 { font-size:1.45rem; font-weight:800; }
+
+    /* ── Rec card ────────────────────────────────────── */
+    .rec-card-item {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.25rem 1.4rem;
+      margin-bottom: 1rem;
+    }
+    .rec-card-item:last-child { margin-bottom: 0; }
+
+    /* card header row */
+    .rch {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: .75rem; margin-bottom: 1rem; flex-wrap: wrap;
+    }
+    .rch-left {}
+    .rch-title { font-size: 1rem; font-weight: 700; }
+    .rch-date  { font-size: .75rem; color: var(--text-muted); margin-top: .2rem; }
+
+    /* ── Sections inside a rec card ──────────────────── */
+    .rec-section       { margin-bottom: .9rem; }
+    .rec-section:last-child { margin-bottom: 0; }
+    .rec-section-title {
+      font-size: .75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .05em; margin-bottom: .55rem;
+    }
+    .rec-section-title.improvements { color: #1d4ed8; }
+    .rec-section-title.suggestions  { color: #15803d; }
+    .rec-section-title.safety       { color: #d97706; }
+
+    .rec-list  { display:flex; flex-direction:column; gap:.45rem; }
+    .rec-item  {
+      display: flex; gap: .6rem; align-items: flex-start;
+      font-size: .875rem; color: var(--text-muted); line-height: 1.55;
+      padding: .45rem .6rem; background: var(--bg); border-radius: 6px;
+    }
+    .rec-item::before { content: '•'; flex-shrink: 0; margin-top: 1px; color: var(--text-dim); }
+
+    /* ── Empty / loading ─────────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 3.5rem 1rem;
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+    .empty-icon { font-size: 2.5rem; margin-bottom: .75rem; }
+    .empty-state h3 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
+    .empty-state p  { font-size: .875rem; color: var(--text-muted); margin-bottom: 1.25rem; }
+
+    .loading-state {
+      text-align: center; padding: 3rem 1rem; color: var(--text-muted); font-size: .9rem;
+    }
+    .spinner {
+      width: 32px; height: 32px; border: 3px solid var(--border);
+      border-top-color: var(--primary); border-radius: 50%;
+      animation: spin .65s linear infinite; margin: 0 auto .85rem;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebarContainer"></div>
+
+  <main class="main-content">
+    <div class="container" style="padding:1.5rem 1.5rem 2.5rem;">
+
+      <div class="sec-hd" style="margin-top:0;">
+        <div>
+          <h1>Recommendations</h1>
+          <p style="font-size:.875rem;color:var(--text-muted);margin-top:.2rem;">
+            Personalised tips based on your logged activities.
+          </p>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="load()">Refresh</button>
+      </div>
+
+      <div id="recList">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          Loading recommendations…
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/sidebar.js"></script>
+<script>
+requireAuth();
+document.getElementById('sidebarContainer').innerHTML = renderSidebar();
+initSidebar();
+
+async function load() {
+  const el = document.getElementById('recList');
+  el.innerHTML = `<div class="loading-state"><div class="spinner"></div>Loading recommendations…</div>`;
+
+  try {
+    const recs = await api.getUserRecommendations();
+
+    if (!recs || !recs.length) {
+      el.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">💡</div>
+          <h3>No recommendations yet</h3>
+          <p>Log an activity and tap "Get Recommendations" to generate<br>tips tailored to your fitness goals.</p>
+          <a href="activities.html" class="btn btn-primary btn-sm">Go to Activities</a>
+        </div>`;
+      return;
+    }
+
+    el.innerHTML = recs.map((rec, i) => {
+      const date = formatDateTime(rec.createdAt);
+      const imps = (rec.improvements || []);
+      const sugs = (rec.suggestions  || []);
+      const safe = (rec.safety       || []);
+
+      const section = (title, cls, items) => items.length ? `
+        <div class="rec-section">
+          <div class="rec-section-title ${cls}">${title}</div>
+          <div class="rec-list">${items.map(t => `<div class="rec-item">${escHtml(t)}</div>`).join('')}</div>
+        </div>` : '';
+
+      return `
+        <div class="rec-card-item">
+          <div class="rch">
+            <div class="rch-left">
+              <div class="rch-title">Workout Recommendations</div>
+              <div class="rch-date">${date}</div>
+            </div>
+          </div>
+          ${section('📈 Improvements',                   'improvements', imps)}
+          ${section('🍛 Suggestions & Nepali Food Tips', 'suggestions',  sugs)}
+          ${section('⚠️ Safety Tips',                    'safety',       safe)}
+        </div>`;
+    }).join('');
+
+  } catch (err) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <h3>Could not load recommendations</h3>
+        <p>${escHtml(err.message)}</p>
+        <button class="btn btn-ghost btn-sm" onclick="load()">Try again</button>
+      </div>`;
+  }
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+load();
+</script>
+</body>
+</html>

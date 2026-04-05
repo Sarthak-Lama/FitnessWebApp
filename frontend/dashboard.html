@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitTrack — Daily Log</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ---- Tab system ---- */
+    .page-tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:20px; }
+    .page-tab {
+      padding:10px 20px; font-size:0.88rem; font-weight:600;
+      color:var(--text-muted); cursor:pointer; border-bottom:2px solid transparent;
+      transition:all 0.2s;
+    }
+    .page-tab:hover { color:var(--text); }
+    .page-tab.active { color:var(--primary-light); border-bottom-color:var(--primary); }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; animation:fadeIn 0.2s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+
+    /* ---- Food search ---- */
+    .food-search-wrap { position:relative; margin-bottom:12px; }
+    .food-search-wrap input { padding-right:36px; }
+    .search-icon { position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--text-dim); }
+    .search-results {
+      position:absolute; top:100%; left:0; right:0; z-index:50;
+      background:var(--bg-card); border:1px solid var(--border); border-radius:8px;
+      max-height:260px; overflow-y:auto; box-shadow:0 8px 24px rgba(0,0,0,0.1);
+      display:none;
+    }
+    .search-results.open { display:block; }
+    .search-result-item {
+      padding:10px 14px; cursor:pointer; display:flex; justify-content:space-between;
+      align-items:center; border-bottom:1px solid var(--border); transition:background 0.1s;
+    }
+    .search-result-item:last-child { border-bottom:none; }
+    .search-result-item:hover { background:var(--bg-input); }
+    .sri-name { font-weight:600; font-size:0.88rem; }
+    .sri-macro { font-size:0.75rem; color:var(--text-muted); }
+    .sri-cal { font-weight:700; color:var(--warning); font-size:0.88rem; }
+
+    /* ---- Serving toggle ---- */
+    .serving-toggle { display:flex; background:var(--bg-input); border-radius:8px; padding:2px; width:fit-content; margin-bottom:10px; }
+    .serving-btn {
+      padding:5px 14px; border-radius:6px; font-size:0.8rem; font-weight:600;
+      cursor:pointer; color:var(--text-muted); transition:all 0.2s;
+    }
+    .serving-btn.active { background:var(--primary); color:#fff; }
+
+    /* ---- Meal sections ---- */
+    .meal-section { margin-bottom:16px; }
+    .meal-header {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:8px 12px; background:var(--bg-input); border-radius:8px; margin-bottom:6px;
+      cursor:pointer;
+    }
+    .meal-title { font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); }
+    .meal-cal { font-size:0.8rem; font-weight:700; color:var(--warning); }
+    .meal-entries { display:flex; flex-direction:column; gap:4px; }
+    .meal-entry {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:8px 10px; background:var(--bg-card); border-radius:6px;
+      border:1px solid var(--border);
+    }
+    .me-name { font-weight:600; font-size:0.85rem; }
+    .me-detail { font-size:0.75rem; color:var(--text-muted); margin-top:1px; }
+    .me-right { display:flex; align-items:center; gap:10px; }
+    .me-cal { font-weight:700; font-size:0.88rem; color:var(--warning); }
+
+    /* ---- Macro bar ---- */
+    .macro-row { display:flex; gap:8px; margin-bottom:16px; }
+    .macro-pill {
+      flex:1; padding:8px 10px; background:var(--bg-input); border-radius:8px; text-align:center;
+    }
+    .macro-pill .val { font-size:1rem; font-weight:700; }
+    .macro-pill .lbl { font-size:0.7rem; color:var(--text-muted); margin-top:1px; }
+
+    /* ---- Gym session ---- */
+    .exercise-toggle { display:flex; background:var(--bg-input); border-radius:10px; padding:3px; margin-bottom:16px; }
+    .ex-btn {
+      flex:1; padding:8px; text-align:center; border-radius:8px;
+      font-size:0.85rem; font-weight:600; cursor:pointer;
+      color:var(--text-muted); transition:all 0.2s;
+    }
+    .ex-btn.active { background:var(--primary); color:#fff; }
+
+    .muscle-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:12px; }
+    .muscle-btn {
+      padding:7px 4px; text-align:center; border:1px solid var(--border);
+      border-radius:7px; font-size:0.75rem; font-weight:600; cursor:pointer;
+      color:var(--text-muted); transition:all 0.15s;
+    }
+    .muscle-btn:hover { border-color:var(--primary-light); color:var(--text); }
+    .muscle-btn.selected { border-color:var(--primary); background:#eff6ff; color:var(--primary); }
+
+    /* Sets table */
+    .sets-table { width:100%; border-collapse:collapse; font-size:0.85rem; margin-bottom:12px; }
+    .sets-table th { padding:6px 8px; color:var(--text-muted); font-size:0.75rem; text-align:left; border-bottom:1px solid var(--border); }
+    .sets-table td { padding:8px; border-bottom:1px solid var(--border); }
+    .sets-table tr:last-child td { border-bottom:none; }
+
+    /* PR badge */
+    .pr-badge {
+      display:inline-flex; align-items:center; gap:4px;
+      background:linear-gradient(135deg,#f59e0b,#ef4444); color:#fff;
+      font-size:0.7rem; font-weight:800; padding:3px 8px; border-radius:20px;
+      animation:prPop 0.4s cubic-bezier(0.36,0.07,0.19,0.97);
+    }
+    @keyframes prPop { 0%{transform:scale(0.5)} 60%{transform:scale(1.2)} 100%{transform:scale(1)} }
+
+    /* Calorie estimator */
+    .calorie-est {
+      padding:12px; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3);
+      border-radius:8px; margin-bottom:12px; font-size:0.85rem;
+    }
+
+    /* Common exercises autocomplete */
+    .ex-autocomplete {
+      position:relative;
+    }
+    .ex-suggestions {
+      position:absolute; top:100%; left:0; right:0; z-index:30;
+      background:var(--bg-card); border:1px solid var(--border); border-radius:8px;
+      max-height:180px; overflow-y:auto; display:none; box-shadow:0 8px 20px rgba(0,0,0,0.1);
+    }
+    .ex-suggestions.open { display:block; }
+    .ex-sug-item {
+      padding:8px 12px; cursor:pointer; font-size:0.85rem; display:flex;
+      justify-content:space-between; border-bottom:1px solid var(--border);
+      transition:background 0.1s;
+    }
+    .ex-sug-item:last-child { border-bottom:none; }
+    .ex-sug-item:hover { background:var(--bg-input); }
+    .ex-sug-muscle { font-size:0.72rem; color:var(--text-muted); }
+
+    /* Today log rows */
+    .log-row {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 12px; background:var(--bg-input); border-radius:8px; margin-bottom:6px;
+    }
+    .log-row-left { display:flex; align-items:center; gap:10px; }
+    .log-icon { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+    .log-title { font-weight:600; font-size:0.88rem; }
+    .log-sub { font-size:0.74rem; color:var(--text-muted); margin-top:1px; }
+    .log-cal { font-weight:700; color:var(--accent); }
+
+    /* Cardio type selector */
+    .cardio-type-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+    .cardio-type-card {
+      padding:10px; border:2px solid var(--border); border-radius:10px;
+      text-align:center; cursor:pointer; transition:all 0.2s;
+    }
+    .cardio-type-card:hover { border-color:var(--primary-light); }
+    .cardio-type-card.selected { border-color:var(--primary); background:#eff6ff; }
+    .cardio-type-card .icon { font-size:1.4rem; margin-bottom:4px; }
+    .cardio-type-card .lbl { font-size:0.8rem; font-weight:700; }
+    .cardio-type-card .sub { font-size:0.7rem; color:var(--text-muted); }
+  </style>
+</head>
+<body>
+<div id="sidebarMount"></div>
+<div class="main-content">
+  <header class="topbar">
+    <div class="flex items-center gap-2">
+      <button class="btn btn-ghost btn-sm" id="sidebarToggle">☰</button>
+      <span class="topbar-title" id="pageTitle">Daily Log</span>
+    </div>
+    <span class="text-muted text-sm" id="todayDate"></span>
+  </header>
+
+  <div class="page-content">
+
+    <!-- Quick stats row -->
+    <div class="stat-grid mb-4" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">
+      <div class="stat-card orange">
+        <div class="stat-label">Calories In</div>
+        <div class="stat-value" id="qCalIn">0</div>
+        <div class="stat-sub" id="qCalTarget">/ 2000 kcal</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Calories Burned</div>
+        <div class="stat-value" id="qCalBurned">0</div>
+        <div class="stat-sub">today</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">Net Calories</div>
+        <div class="stat-value" id="qNet">0</div>
+        <div class="stat-sub">in - burned</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-label">Protein</div>
+        <div class="stat-value" id="qProtein">0<span class="stat-unit">g</span></div>
+      </div>
+    </div>
+
+    <!-- Page tabs -->
+    <div class="page-tabs">
+      <div class="page-tab active" onclick="switchTab('food')">🍛 Food Log</div>
+      <div class="page-tab"        onclick="switchTab('gym')">🏋️ Gym Session</div>
+      <div class="page-tab"        onclick="switchTab('cardio')">🏃 Cardio</div>
+      <div class="page-tab"        onclick="switchTab('overview')">📊 Overview</div>
+    </div>
+
+    <!-- ===================== FOOD LOG ===================== -->
+    <div class="tab-panel active" id="tab-food">
+      <div class="grid-2" style="gap:20px;align-items:start;">
+
+        <!-- Left: Add food -->
+        <div class="card">
+          <div class="card-title mb-4">Add Food</div>
+
+          <!-- Search -->
+          <div class="food-search-wrap">
+            <input type="text" class="form-control" id="foodSearch"
+              placeholder="Search Nepali or custom food..." autocomplete="off"
+              oninput="searchFood()" onfocus="searchFood()" />
+            <span class="search-icon">🔍</span>
+            <div class="search-results" id="searchResults"></div>
+          </div>
+
+          <!-- Selected food preview -->
+          <div id="foodPreview" style="display:none;padding:10px 12px;background:var(--bg-input);border-radius:8px;margin-bottom:12px;">
+            <div style="font-weight:700;margin-bottom:4px;" id="previewName">—</div>
+            <div class="macro-row" style="margin-bottom:0;">
+              <div class="macro-pill" style="padding:4px 6px;">
+                <div class="val" id="previewCal" style="font-size:0.85rem;">0</div>
+                <div class="lbl">kcal</div>
+              </div>
+              <div class="macro-pill" style="padding:4px 6px;">
+                <div class="val" id="previewProt" style="font-size:0.85rem;color:var(--info)">0g</div>
+                <div class="lbl">protein</div>
+              </div>
+              <div class="macro-pill" style="padding:4px 6px;">
+                <div class="val" id="previewCarb" style="font-size:0.85rem;color:var(--warning)">0g</div>
+                <div class="lbl">carbs</div>
+              </div>
+              <div class="macro-pill" style="padding:4px 6px;">
+                <div class="val" id="previewFat" style="font-size:0.85rem;color:var(--danger)">0g</div>
+                <div class="lbl">fat</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Serving mode -->
+          <div class="serving-toggle mb-2" id="servingToggle">
+            <div class="serving-btn active" onclick="setServingMode('grams')">Grams</div>
+            <div class="serving-btn"        onclick="setServingMode('servings')">Servings</div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label id="qtyLabel">Quantity (g)</label>
+              <input type="number" class="form-control" id="foodQty" placeholder="100"
+                min="1" step="0.1" oninput="updatePreview()" />
+            </div>
+            <div class="form-group">
+              <label>Meal</label>
+              <select class="form-control" id="foodMeal">
+                <option value="BREAKFAST">Breakfast</option>
+                <option value="LUNCH">Lunch</option>
+                <option value="DINNER">Dinner</option>
+                <option value="SNACK">Snack</option>
+                <option value="PRE_WORKOUT">Pre-Workout</option>
+                <option value="POST_WORKOUT">Post-Workout</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Custom food fallback -->
+          <details id="customFoodDetails" style="margin-bottom:12px;">
+            <summary style="cursor:pointer;font-size:0.82rem;color:var(--primary-light);margin-bottom:8px;">+ Add custom food manually</summary>
+            <div class="form-group mt-4">
+              <label>Food Name</label>
+              <input type="text" class="form-control" id="customFoodName" placeholder="e.g. Homemade Dal" />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Calories</label>
+                <input type="number" class="form-control" id="customCal" placeholder="200" min="0" step="0.1" />
+              </div>
+              <div class="form-group">
+                <label>Serving (g)</label>
+                <input type="number" class="form-control" id="customServing" placeholder="100" min="1" />
+              </div>
+            </div>
+            <div class="form-row-3">
+              <div class="form-group">
+                <label>Protein (g)</label>
+                <input type="number" class="form-control" id="customProt" placeholder="0" min="0" step="0.1" />
+              </div>
+              <div class="form-group">
+                <label>Carbs (g)</label>
+                <input type="number" class="form-control" id="customCarb" placeholder="0" min="0" step="0.1" />
+              </div>
+              <div class="form-group">
+                <label>Fat (g)</label>
+                <input type="number" class="form-control" id="customFat" placeholder="0" min="0" step="0.1" />
+              </div>
+            </div>
+          </details>
+
+          <div id="foodAlert"></div>
+          <button class="btn btn-accent btn-full" id="addFoodBtn" onclick="addFood()">Add to Log</button>
+        </div>
+
+        <!-- Right: Today's food by meal -->
+        <div>
+          <div class="macro-row">
+            <div class="macro-pill">
+              <div class="val" id="dayCalTotal" style="color:var(--warning)">0</div>
+              <div class="lbl">kcal</div>
+            </div>
+            <div class="macro-pill">
+              <div class="val" id="dayProt" style="color:var(--info)">0g</div>
+              <div class="lbl">protein</div>
+            </div>
+            <div class="macro-pill">
+              <div class="val" id="dayCarb" style="color:var(--warning)">0g</div>
+              <div class="lbl">carbs</div>
+            </div>
+            <div class="macro-pill">
+              <div class="val" id="dayFat" style="color:var(--danger)">0g</div>
+              <div class="lbl">fat</div>
+            </div>
+          </div>
+
+          <div id="todayMeals">
+            <p class="text-muted text-sm">No food logged today.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== GYM SESSION ===================== -->
+    <div class="tab-panel" id="tab-gym">
+      <div class="grid-2" style="gap:20px;align-items:start;">
+
+        <!-- Left: Log a set -->
+        <div class="card">
+          <div class="card-title mb-4">Log Exercise</div>
+
+          <!-- Exercise name with autocomplete -->
+          <div class="form-group ex-autocomplete">
+            <label>Exercise Name *</label>
+            <input type="text" class="form-control" id="exName"
+              placeholder="e.g. Bench Press, Squat..."
+              oninput="filterExercises()" onfocus="filterExercises()" autocomplete="off" />
+            <div class="ex-suggestions" id="exSuggestions"></div>
+          </div>
+
+          <!-- Muscle group selector -->
+          <div class="form-group">
+            <label>Muscle Group *</label>
+            <div class="muscle-grid">
+              <div class="muscle-btn" onclick="pickMuscle(this,'CHEST')">💪 Chest</div>
+              <div class="muscle-btn" onclick="pickMuscle(this,'BACK')">🔙 Back</div>
+              <div class="muscle-btn" onclick="pickMuscle(this,'LEGS')">🦵 Legs</div>
+              <div class="muscle-btn" onclick="pickMuscle(this,'SHOULDERS')">🙆 Shoulders</div>
+              <div class="muscle-btn" onclick="pickMuscle(this,'ARMS')">💪 Arms</div>
+              <div class="muscle-btn" onclick="pickMuscle(this,'CORE')">🎯 Core</div>
+              <div class="muscle-btn" onclick="pickMuscle(this,'GLUTES')">🍑 Glutes</div>
+              <div class="muscle-btn" onclick="pickMuscle(this,'FULL_BODY')">⚡ Full Body</div>
+            </div>
+            <input type="hidden" id="exMuscle" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Sets *</label>
+              <input type="number" class="form-control" id="exSets" placeholder="3" min="1" max="20" value="3" />
+            </div>
+            <div class="form-group">
+              <label>Reps *</label>
+              <input type="number" class="form-control" id="exReps" placeholder="10" min="1" max="100" value="10" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Weight (kg) <span class="text-muted text-xs">— leave 0 for bodyweight</span></label>
+            <input type="number" class="form-control" id="exWeight"
+              placeholder="e.g. 60" min="0" max="500" step="0.5" value="0" />
+          </div>
+
+          <div id="gymAlert"></div>
+          <button class="btn btn-primary btn-full" id="logSetBtn" onclick="logGymSet()">Log Set</button>
+        </div>
+
+        <!-- Right: Today's gym log -->
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <span class="card-title">Today's Gym Log</span>
+            <span class="text-muted text-sm" id="totalSetsToday">0 sets</span>
+          </div>
+          <div id="todayGymLog">
+            <p class="text-muted text-sm">No exercises logged today.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== CARDIO ===================== -->
+    <div class="tab-panel" id="tab-cardio">
+      <div class="grid-2" style="gap:20px;align-items:start;">
+
+        <!-- Left: Log cardio -->
+        <div class="card">
+          <div class="card-title mb-4">Log Cardio Session</div>
+
+          <div class="form-group">
+            <label>Activity Type *</label>
+            <select class="form-control" id="cardioActivity" onchange="recalcCalories()">
+              <option value="WALKING">Walking</option>
+              <option value="RUNNING">Running</option>
+              <option value="CYCLING">Cycling</option>
+              <option value="HITT">HIIT</option>
+              <option value="JUMP_ROPE">Jump Rope</option>
+              <option value="CARDIO">General Cardio</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Type *</label>
+            <div class="cardio-type-row">
+              <div class="cardio-type-card selected" id="ctTreadmill" onclick="pickCardioType('TREADMILL',this)">
+                <div class="icon">🏃‍♂️</div>
+                <div class="lbl">Treadmill / Indoor</div>
+                <div class="sub">Gym machine</div>
+              </div>
+              <div class="cardio-type-card" id="ctOutdoor" onclick="pickCardioType('OUTDOOR',this)">
+                <div class="icon">🌳</div>
+                <div class="lbl">Outdoor</div>
+                <div class="sub">Road / park / trail</div>
+              </div>
+            </div>
+            <input type="hidden" id="cardioType" value="TREADMILL" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Duration (min) *</label>
+              <input type="number" class="form-control" id="cardioDuration"
+                placeholder="30" min="1" max="600" oninput="recalcCalories()" />
+            </div>
+            <div class="form-group">
+              <label>Distance (km) <span class="text-muted text-xs">optional</span></label>
+              <input type="number" class="form-control" id="cardioDistance"
+                placeholder="3.5" min="0" step="0.01" />
+            </div>
+          </div>
+
+          <!-- Live calorie estimate -->
+          <div class="calorie-est" id="cardioEstimate" style="display:none;">
+            <span>🔥 Estimated calories: </span>
+            <strong id="estCal">—</strong>
+            <span class="text-muted text-xs"> (based on your profile weight)</span>
+          </div>
+
+          <div id="cardioAlert"></div>
+          <button class="btn btn-primary btn-full" id="logCardioBtn" onclick="logCardioSession()">Log Cardio</button>
+        </div>
+
+        <!-- Right: Today's cardio log -->
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <span class="card-title">Today's Cardio Log</span>
+            <span class="text-muted text-sm" id="totalCardioToday">0 sessions</span>
+          </div>
+          <div id="todayCardioLog">
+            <p class="text-muted text-sm">No cardio logged today.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== OVERVIEW ===================== -->
+    <div class="tab-panel" id="tab-overview">
+      <div class="grid-2 mb-6">
+        <div class="card">
+          <div class="card-title mb-4">Macro Breakdown</div>
+          <div class="chart-wrap" style="height:200px;"><canvas id="macroChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title mb-4">Calorie Balance</div>
+          <div style="margin-bottom:12px;">
+            <div class="text-sm text-muted mb-2">
+              Consumed <span id="ovConsumed" style="color:var(--warning);font-weight:700;">0</span>
+              / <span id="ovTarget" style="font-weight:700;">2000</span> kcal
+            </div>
+            <div class="progress-bar-wrap"><div class="progress-bar" id="calProgressBar" style="background:var(--warning);width:0%"></div></div>
+          </div>
+          <div>
+            <div class="text-sm text-muted mb-2">Burned: <span id="ovBurned" style="color:var(--accent);font-weight:700;">0</span> kcal</div>
+            <div class="progress-bar-wrap"><div class="progress-bar" id="burnProgressBar" style="background:var(--accent);width:0%"></div></div>
+          </div>
+          <div style="margin-top:16px;">
+            <div class="text-sm text-muted">Net calories (remaining to goal):</div>
+            <div style="font-size:1.3rem;font-weight:700;margin-top:4px;" id="netCalDisplay">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title mb-4">Weekly Calories Burned</div>
+        <div class="chart-wrap" style="height:180px;"><canvas id="weeklyChart"></canvas></div>
+      </div>
+    </div>
+
+  </div><!-- /page-content -->
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/sidebar.js"></script>
+<script>
+  requireAuth();
+  document.getElementById('sidebarMount').innerHTML = renderSidebar();
+  initSidebar();
+
+  const now = new Date();
+  document.getElementById('todayDate').textContent = now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+
+  // ==================== Tab system ====================
+  function switchTab(name) {
+    document.querySelectorAll('.page-tab').forEach((t,i) => {
+      const tabs = ['food','gym','cardio','overview'];
+      t.classList.toggle('active', tabs[i] === name);
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`tab-${name}`).classList.add('active');
+    if (name === 'overview') buildOverview();
+  }
+
+  // ==================== State ====================
+  let selectedFood = null;
+  let servingMode = 'grams';
+  let userWeight = 70;  // fallback
+  let calTarget = 2000;
+  let todayFoodEntries = [];
+  let todayGymSets = [];
+  let todayCardioSessions = [];
+
+  // ==================== Load profile ====================
+  async function loadProfile() {
+    try {
+      const p = await api.getProfile();
+      if (p.weightKg)          userWeight = p.weightKg;
+      if (p.dailyCalorieTarget) calTarget = p.dailyCalorieTarget;
+      document.getElementById('qCalTarget').textContent = `/ ${calTarget} kcal`;
+      document.getElementById('ovTarget').textContent = calTarget;
+    } catch(_) {}
+  }
+
+  // ==================== Load today data ====================
+  async function loadToday() {
+    try {
+      const [food, sets, cardio] = await Promise.all([
+        api.getTodayFood(),
+        api.getTodaySets(),
+        api.getTodayCardio(),
+      ]);
+      todayFoodEntries = food;
+      todayGymSets = sets;
+      todayCardioSessions = cardio;
+      renderFoodLog(food);
+      renderGymLog(sets);
+      renderCardioLog(cardio);
+      updateQuickStats();
+    } catch(err) { console.error(err); }
+  }
+
+  function updateQuickStats() {
+    const calIn = todayFoodEntries.reduce((s,f) => s + (f.calories||0), 0);
+    const calBurned = todayCardioSessions.reduce((s,c) => s + (c.caloriesBurned||0), 0)
+                    + todayGymSets.reduce((s,w) => s + (w.caloriesBurned||0), 0);
+    const protein = todayFoodEntries.reduce((s,f) => s + (f.protein||0), 0);
+    document.getElementById('qCalIn').textContent    = Math.round(calIn);
+    document.getElementById('qCalBurned').textContent = Math.round(calBurned);
+    document.getElementById('qNet').textContent       = Math.round(calIn - calBurned);
+    document.getElementById('qProtein').innerHTML     = `${Math.round(protein)}<span class="stat-unit">g</span>`;
+  }
+
+  // ==================== FOOD LOG ====================
+
+  // Expanded Nepali + common foods
+  const ALL_FOODS = [
+    // Nepali staples
+    {name:'Dal Bhat (Rice + Dal)',          calories:180, protein:8,  carbs:32, fat:2,  serving:300},
+    {name:'Momo (Steamed Veg)',             calories:120, protein:5,  carbs:18, fat:3,  serving:150},
+    {name:'Momo (Steamed Chicken)',         calories:150, protein:10, carbs:16, fat:5,  serving:150},
+    {name:'Momo (Fried)',                   calories:220, protein:9,  carbs:20, fat:12, serving:150},
+    {name:'Chiura (Beaten Rice)',           calories:350, protein:7,  carbs:78, fat:1,  serving:100},
+    {name:'Dhido (Millet Porridge)',        calories:160, protein:4,  carbs:33, fat:1.5,serving:200},
+    {name:'Gundruk Soup',                   calories:40,  protein:3,  carbs:6,  fat:0.5,serving:250},
+    {name:'Sel Roti',                       calories:280, protein:4,  carbs:52, fat:7,  serving:100},
+    {name:'Roti (Wheat)',                   calories:265, protein:8,  carbs:50, fat:3,  serving:100},
+    {name:'Sukuti (Dried Meat)',            calories:300, protein:45, carbs:2,  fat:12, serving:80},
+    {name:'Kheer (Rice Pudding)',           calories:150, protein:5,  carbs:28, fat:4,  serving:200},
+    {name:'Lassi (Sweet)',                  calories:100, protein:4,  carbs:16, fat:2.5,serving:250},
+    {name:'Chiya (Milk Tea)',               calories:60,  protein:2,  carbs:9,  fat:2,  serving:200},
+    {name:'Thukpa (Noodle Soup)',           calories:200, protein:9,  carbs:35, fat:4,  serving:350},
+    {name:'Samosa (Fried)',                 calories:260, protein:5,  carbs:32, fat:13, serving:100},
+    {name:'Jeri (Sweet)',                   calories:370, protein:3,  carbs:68, fat:10, serving:100},
+    {name:'Bhatmas (Roasted Soy)',          calories:430, protein:35, carbs:25, fat:18, serving:50},
+    {name:'Nimbu Pani',                     calories:25,  protein:0,  carbs:7,  fat:0,  serving:250},
+    {name:'Aalu Tama (Potato Bamboo)',      calories:130, protein:4,  carbs:24, fat:3,  serving:200},
+    {name:'Chicken Curry',                  calories:190, protein:22, carbs:6,  fat:9,  serving:200},
+    {name:'Aalu ko Tarkari (Potato Curry)', calories:120, protein:2,  carbs:22, fat:3.5,serving:150},
+    {name:'Gundruk ko Jhol',               calories:35,  protein:2,  carbs:5,  fat:0.5,serving:200},
+    {name:'Chowmein (Veg)',                 calories:210, protein:6,  carbs:38, fat:5,  serving:250},
+    {name:'Chowmein (Chicken)',             calories:260, protein:14, carbs:38, fat:7,  serving:250},
+    {name:'Saag (Leafy Greens)',            calories:25,  protein:3,  carbs:4,  fat:0.5,serving:150},
+    {name:'Cauliflower Curry',              calories:80,  protein:3,  carbs:12, fat:3,  serving:200},
+    {name:'Curd / Dahi (Plain)',            calories:60,  protein:3.5,carbs:5,  fat:2.5,serving:150},
+    {name:'Paneer (Cottage Cheese)',        calories:265, protein:18, carbs:3,  fat:20, serving:100},
+    // Common foods
+    {name:'Egg (Boiled)',                   calories:155, protein:13, carbs:1,  fat:11, serving:100},
+    {name:'Egg (Scrambled w/ butter)',      calories:200, protein:14, carbs:1,  fat:16, serving:120},
+    {name:'Banana',                         calories:89,  protein:1,  carbs:23, fat:0.3,serving:120},
+    {name:'Apple',                          calories:52,  protein:0.3,carbs:14, fat:0.2,serving:150},
+    {name:'Oats (Cooked)',                  calories:68,  protein:2.4,carbs:12, fat:1.4,serving:240},
+    {name:'Brown Rice (Cooked)',            calories:111, protein:2.6,carbs:23, fat:0.9,serving:195},
+    {name:'White Rice (Cooked)',            calories:130, protein:2.7,carbs:28, fat:0.3,serving:195},
+    {name:'Chicken Breast (Grilled)',       calories:165, protein:31, carbs:0,  fat:3.6,serving:100},
+    {name:'Tuna (Canned)',                  calories:132, protein:29, carbs:0,  fat:1,  serving:100},
+    {name:'Milk (Full-fat)',                calories:61,  protein:3.2,carbs:4.8,fat:3.3,serving:240},
+    {name:'Peanut Butter',                  calories:588, protein:25, carbs:20, fat:50, serving:32},
+    {name:'Bread (White, 1 slice)',         calories:79,  protein:2.7,carbs:15, fat:1,  serving:30},
+    {name:'Sweet Potato (Boiled)',          calories:90,  protein:2,  carbs:21, fat:0.1,serving:130},
+    {name:'Lentils (Cooked)',               calories:116, protein:9,  carbs:20, fat:0.4,serving:198},
+    {name:'Almonds',                        calories:579, protein:21, carbs:22, fat:50, serving:30},
+    {name:'Whey Protein Shake',             calories:120, protein:25, carbs:3,  fat:1,  serving:30},
+  ];
+
+  function searchFood() {
+    const query = document.getElementById('foodSearch').value.trim().toLowerCase();
+    const res = document.getElementById('searchResults');
+    if (!query) { res.classList.remove('open'); return; }
+    const matches = ALL_FOODS.filter(f => f.name.toLowerCase().includes(query)).slice(0, 8);
+    if (!matches.length) { res.classList.remove('open'); return; }
+    res.innerHTML = matches.map((f,i) => `
+      <div class="search-result-item" onclick="selectFood(${ALL_FOODS.indexOf(f)})">
+        <div>
+          <div class="sri-name">${f.name}</div>
+          <div class="sri-macro">${f.protein}g P · ${f.carbs}g C · ${f.fat}g F per ${f.serving}g</div>
+        </div>
+        <div class="sri-cal">${f.calories} kcal</div>
+      </div>`).join('');
+    res.classList.add('open');
+  }
+
+  function selectFood(idx) {
+    selectedFood = ALL_FOODS[idx];
+    document.getElementById('foodSearch').value = selectedFood.name;
+    document.getElementById('searchResults').classList.remove('open');
+    document.getElementById('foodQty').value = selectedFood.serving;
+    updatePreview();
+    document.getElementById('foodPreview').style.display = 'block';
+  }
+
+  // Close search on outside click
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.food-search-wrap'))
+      document.getElementById('searchResults').classList.remove('open');
+  });
+
+  function setServingMode(mode) {
+    servingMode = mode;
+    document.querySelectorAll('.serving-btn').forEach((b,i) =>
+      b.classList.toggle('active', (i===0&&mode==='grams')||(i===1&&mode==='servings')));
+    document.getElementById('qtyLabel').textContent = mode === 'grams' ? 'Quantity (g)' : 'Servings';
+    document.getElementById('foodQty').value = mode === 'grams'
+      ? (selectedFood ? selectedFood.serving : 100)
+      : 1;
+    updatePreview();
+  }
+
+  function updatePreview() {
+    if (!selectedFood) return;
+    const qty = parseFloat(document.getElementById('foodQty').value) || 0;
+    let ratio = servingMode === 'grams' ? qty / selectedFood.serving : qty;
+    document.getElementById('previewCal').textContent  = Math.round(selectedFood.calories * ratio);
+    document.getElementById('previewProt').textContent = `${(selectedFood.protein * ratio).toFixed(1)}g`;
+    document.getElementById('previewCarb').textContent = `${(selectedFood.carbs * ratio).toFixed(1)}g`;
+    document.getElementById('previewFat').textContent  = `${(selectedFood.fat * ratio).toFixed(1)}g`;
+  }
+
+  async function addFood() {
+    document.getElementById('foodAlert').innerHTML = '';
+    const meal = document.getElementById('foodMeal').value;
+    const qty  = parseFloat(document.getElementById('foodQty').value) || 0;
+    const customName = document.getElementById('customFoodName').value.trim();
+    const isCustom = !!customName;
+
+    let food = selectedFood;
+    if (!food && !isCustom) { showAlert('foodAlert','Search and select a food item, or use custom entry.','error'); return; }
+
+    let name, calories, protein, carbs, fat, serving;
+    if (isCustom) {
+      name     = customName;
+      calories = parseFloat(document.getElementById('customCal').value)     || 0;
+      protein  = parseFloat(document.getElementById('customProt').value)    || 0;
+      carbs    = parseFloat(document.getElementById('customCarb').value)    || 0;
+      fat      = parseFloat(document.getElementById('customFat').value)     || 0;
+      serving  = parseFloat(document.getElementById('customServing').value) || 100;
+    } else {
+      const ratio = servingMode === 'grams' ? qty / food.serving : qty;
+      name     = food.name;
+      calories = food.calories * ratio;
+      protein  = food.protein  * ratio;
+      carbs    = food.carbs    * ratio;
+      fat      = food.fat      * ratio;
+      serving  = servingMode === 'grams' ? qty : qty * food.serving;
+    }
+
+    if (!name || calories <= 0) { showAlert('foodAlert','Please enter valid food details.','error'); return; }
+
+    const btn = document.getElementById('addFoodBtn');
+    setLoading(btn, true);
+    try {
+      await api.logFood({
+        userId: localStorage.getItem('userId'),
+        foodName: name,
+        calories: Math.round(calories * 10) / 10,
+        protein:  Math.round(protein * 10) / 10,
+        carbs:    Math.round(carbs * 10) / 10,
+        fat:      Math.round(fat * 10) / 10,
+        servingSize: serving,
+        mealType: meal,
+        loggedAt: new Date().toISOString(),
+      });
+      // Reset
+      selectedFood = null;
+      document.getElementById('foodSearch').value = '';
+      document.getElementById('foodQty').value = '';
+      document.getElementById('foodPreview').style.display = 'none';
+      document.getElementById('customFoodName').value = '';
+      await loadToday();
+    } catch(err) { showAlert('foodAlert', err.message||'Failed to add food', 'error'); }
+    finally { setLoading(btn, false); }
+  }
+
+  function renderFoodLog(entries) {
+    const meals = ['BREAKFAST','LUNCH','DINNER','SNACK','PRE_WORKOUT','POST_WORKOUT'];
+    const mealEmoji = {BREAKFAST:'🌅',LUNCH:'☀️',DINNER:'🌙',SNACK:'🍎',PRE_WORKOUT:'⚡',POST_WORKOUT:'💪'};
+    const byMeal = {};
+    entries.forEach(e => { if (!byMeal[e.mealType]) byMeal[e.mealType]=[]; byMeal[e.mealType].push(e); });
+
+    const calTotal  = entries.reduce((s,f) => s+(f.calories||0),0);
+    const protTotal = entries.reduce((s,f) => s+(f.protein||0),0);
+    const carbTotal = entries.reduce((s,f) => s+(f.carbs||0),0);
+    const fatTotal  = entries.reduce((s,f) => s+(f.fat||0),0);
+    document.getElementById('dayCalTotal').textContent = Math.round(calTotal);
+    document.getElementById('dayProt').textContent = `${Math.round(protTotal)}g`;
+    document.getElementById('dayCarb').textContent = `${Math.round(carbTotal)}g`;
+    document.getElementById('dayFat').textContent  = `${Math.round(fatTotal)}g`;
+
+    const el = document.getElementById('todayMeals');
+    if (!entries.length) { el.innerHTML = '<p class="text-muted text-sm">No food logged today.</p>'; return; }
+
+    el.innerHTML = meals.filter(m => byMeal[m]).map(meal => {
+      const mCal = byMeal[meal].reduce((s,f) => s+(f.calories||0), 0);
+      return `<div class="meal-section">
+        <div class="meal-header">
+          <span class="meal-title">${mealEmoji[meal]||''} ${meal.replace(/_/g,' ')}</span>
+          <span class="meal-cal">${Math.round(mCal)} kcal</span>
+        </div>
+        <div class="meal-entries">
+          ${byMeal[meal].map(f => `
+            <div class="meal-entry">
+              <div>
+                <div class="me-name">${f.foodName}</div>
+                <div class="me-detail">${f.servingSize||100}g · ${f.protein||0}P ${f.carbs||0}C ${f.fat||0}F</div>
+              </div>
+              <div class="me-right">
+                <span class="me-cal">${Math.round(f.calories||0)} kcal</span>
+                <button class="btn btn-danger btn-sm" onclick="deleteFood('${f.id}')">✕</button>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function deleteFood(id) {
+    if (!confirm('Remove this food entry?')) return;
+    try { await api.deleteFood(id); await loadToday(); } catch(e) { alert(e.message); }
+  }
+
+  // ==================== GYM SESSION ====================
+  const GYM_EXERCISES = [
+    {name:'Bench Press',        muscle:'CHEST'},
+    {name:'Incline Bench Press',muscle:'CHEST'},
+    {name:'Chest Fly',          muscle:'CHEST'},
+    {name:'Push Up',            muscle:'CHEST'},
+    {name:'Deadlift',           muscle:'BACK'},
+    {name:'Pull Up',            muscle:'BACK'},
+    {name:'Lat Pulldown',       muscle:'BACK'},
+    {name:'Bent Over Row',      muscle:'BACK'},
+    {name:'Cable Row',          muscle:'BACK'},
+    {name:'Squat',              muscle:'LEGS'},
+    {name:'Leg Press',          muscle:'LEGS'},
+    {name:'Lunges',             muscle:'LEGS'},
+    {name:'Leg Curl',           muscle:'LEGS'},
+    {name:'Leg Extension',      muscle:'LEGS'},
+    {name:'Calf Raises',        muscle:'LEGS'},
+    {name:'Overhead Press',     muscle:'SHOULDERS'},
+    {name:'Lateral Raise',      muscle:'SHOULDERS'},
+    {name:'Front Raise',        muscle:'SHOULDERS'},
+    {name:'Face Pull',          muscle:'SHOULDERS'},
+    {name:'Bicep Curl',         muscle:'ARMS'},
+    {name:'Hammer Curl',        muscle:'ARMS'},
+    {name:'Tricep Pushdown',    muscle:'ARMS'},
+    {name:'Skull Crusher',      muscle:'ARMS'},
+    {name:'Dips',               muscle:'ARMS'},
+    {name:'Plank',              muscle:'CORE'},
+    {name:'Crunches',           muscle:'CORE'},
+    {name:'Russian Twist',      muscle:'CORE'},
+    {name:'Cable Crunch',       muscle:'CORE'},
+    {name:'Hip Thrust',         muscle:'GLUTES'},
+    {name:'Glute Bridge',       muscle:'GLUTES'},
+    {name:'Clean and Press',    muscle:'FULL_BODY'},
+    {name:'Burpees',            muscle:'FULL_BODY'},
+    {name:'Kettlebell Swing',   muscle:'FULL_BODY'},
+  ];
+
+  function filterExercises() {
+    const q = document.getElementById('exName').value.trim().toLowerCase();
+    const sug = document.getElementById('exSuggestions');
+    if (!q) { sug.classList.remove('open'); return; }
+    const matches = GYM_EXERCISES.filter(e => e.name.toLowerCase().includes(q)).slice(0,8);
+    if (!matches.length) { sug.classList.remove('open'); return; }
+    sug.innerHTML = matches.map(e => `
+      <div class="ex-sug-item" onclick="pickExercise('${e.name}','${e.muscle}')">
+        <span>${e.name}</span>
+        <span class="ex-sug-muscle">${e.muscle.replace(/_/g,' ')}</span>
+      </div>`).join('');
+    sug.classList.add('open');
+  }
+
+  function pickExercise(name, muscle) {
+    document.getElementById('exName').value = name;
+    document.getElementById('exSuggestions').classList.remove('open');
+    // Auto-select muscle group
+    document.querySelectorAll('.muscle-btn').forEach(b => {
+      b.classList.toggle('selected', b.textContent.includes(muscle.replace(/_/g,' ')) ||
+        (muscle === 'FULL_BODY' && b.textContent.includes('Full Body')));
+    });
+    document.getElementById('exMuscle').value = muscle;
+  }
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.ex-autocomplete'))
+      document.getElementById('exSuggestions').classList.remove('open');
+  });
+
+  function pickMuscle(btn, value) {
+    document.querySelectorAll('.muscle-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('exMuscle').value = value;
+  }
+
+  async function logGymSet() {
+    document.getElementById('gymAlert').innerHTML = '';
+    const name   = document.getElementById('exName').value.trim();
+    const muscle = document.getElementById('exMuscle').value;
+    const sets   = parseInt(document.getElementById('exSets').value)  || 0;
+    const reps   = parseInt(document.getElementById('exReps').value)  || 0;
+    const weight = parseFloat(document.getElementById('exWeight').value) || 0;
+
+    if (!name)   { showAlert('gymAlert','Exercise name is required.','error'); return; }
+    if (!muscle) { showAlert('gymAlert','Please select a muscle group.','error'); return; }
+    if (sets < 1 || reps < 1) { showAlert('gymAlert','Sets and reps must be at least 1.','error'); return; }
+
+    const btn = document.getElementById('logSetBtn');
+    setLoading(btn, true);
+    try {
+      const res = await api.logSet({
+        userId: localStorage.getItem('userId'),
+        exerciseName: name,
+        muscleGroup: muscle,
+        sets, reps,
+        weightKg: weight,
+        loggedAt: new Date().toISOString(),
+      });
+
+      // PR alert
+      if (res.isPR && weight > 0) {
+        showAlert('gymAlert',
+          `🏆 Personal Record! New best for ${name}: ${weight} kg` +
+          (res.previousBestKg ? ` (previous: ${res.previousBestKg} kg)` : ' (first log!)'),
+          'success');
+      }
+
+      await loadToday();
+    } catch(err) { showAlert('gymAlert', err.message||'Failed to log set', 'error'); }
+    finally { setLoading(btn, false); }
+  }
+
+  function renderGymLog(sets) {
+    document.getElementById('totalSetsToday').textContent = `${sets.length} set${sets.length!==1?'s':''}`;
+    const el = document.getElementById('todayGymLog');
+    if (!sets.length) { el.innerHTML = '<p class="text-muted text-sm">No exercises logged today.</p>'; return; }
+
+    // Group by exercise name
+    const byEx = {};
+    sets.forEach(s => { if (!byEx[s.exerciseName]) byEx[s.exerciseName]=[]; byEx[s.exerciseName].push(s); });
+
+    el.innerHTML = Object.entries(byEx).map(([ex, rows]) => `
+      <div class="card mb-4" style="padding:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div>
+            <span style="font-weight:700;">${ex}</span>
+            <span class="badge badge-purple" style="margin-left:8px;font-size:0.7rem;">${rows[0].muscleGroup?.replace(/_/g,' ') || ''}</span>
+          </div>
+        </div>
+        <table class="sets-table">
+          <thead><tr><th>Set</th><th>Reps</th><th>Weight</th><th>Vol</th></tr></thead>
+          <tbody>
+            ${rows.map((r,i) => `<tr>
+              <td>${i+1}</td>
+              <td>${r.reps}</td>
+              <td>${r.weightKg > 0 ? r.weightKg+' kg' : 'BW'}</td>
+              <td class="text-muted">${r.weightKg > 0 ? Math.round(r.reps * r.weightKg)+' kg' : '—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`).join('');
+  }
+
+  // ==================== CARDIO ====================
+  const MET_TABLE = {
+    WALKING:   {TREADMILL:3.8, OUTDOOR:3.5},
+    RUNNING:   {TREADMILL:9.0, OUTDOOR:8.5},
+    CYCLING:   {TREADMILL:5.5, OUTDOOR:6.0},
+    HITT:      {TREADMILL:10,  OUTDOOR:10},
+    JUMP_ROPE: {TREADMILL:11,  OUTDOOR:11},
+    CARDIO:    {TREADMILL:5.0, OUTDOOR:4.5},
+  };
+
+  function pickCardioType(type, card) {
+    document.querySelectorAll('.cardio-type-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    document.getElementById('cardioType').value = type;
+    recalcCalories();
+  }
+
+  function recalcCalories() {
+    const activity = document.getElementById('cardioActivity').value;
+    const type     = document.getElementById('cardioType').value;
+    const dur      = parseFloat(document.getElementById('cardioDuration').value) || 0;
+    const el       = document.getElementById('cardioEstimate');
+    if (!dur) { el.style.display='none'; return; }
+    const met = (MET_TABLE[activity]||{})[type] || 4;
+    const kcal = Math.round(met * userWeight * (dur / 60));
+    document.getElementById('estCal').textContent = kcal + ' kcal';
+    el.style.display = 'block';
+  }
+
+  async function logCardioSession() {
+    document.getElementById('cardioAlert').innerHTML = '';
+    const activity = document.getElementById('cardioActivity').value;
+    const type     = document.getElementById('cardioType').value;
+    const dur      = parseInt(document.getElementById('cardioDuration').value) || 0;
+    const dist     = parseFloat(document.getElementById('cardioDistance').value) || null;
+
+    if (!activity) { showAlert('cardioAlert','Select an activity type.','error'); return; }
+    if (dur < 1)   { showAlert('cardioAlert','Duration must be at least 1 minute.','error'); return; }
+
+    const met  = (MET_TABLE[activity]||{})[type] || 4;
+    const kcal = Math.round(met * userWeight * (dur / 60) * 10) / 10;
+
+    const btn = document.getElementById('logCardioBtn');
+    setLoading(btn, true);
+    try {
+      await api.logCardio({
+        userId: localStorage.getItem('userId'),
+        activityType:    activity,
+        cardioType:      type,
+        durationMinutes: dur,
+        distanceKm:      dist,
+        caloriesBurned:  kcal,
+        loggedAt: new Date().toISOString(),
+      });
+      document.getElementById('cardioDuration').value = '';
+      document.getElementById('cardioDistance').value = '';
+      document.getElementById('cardioEstimate').style.display = 'none';
+      await loadToday();
+    } catch(err) { showAlert('cardioAlert', err.message||'Failed to log cardio', 'error'); }
+    finally { setLoading(btn, false); }
+  }
+
+  function renderCardioLog(sessions) {
+    document.getElementById('totalCardioToday').textContent = `${sessions.length} session${sessions.length!==1?'s':''}`;
+    const el = document.getElementById('todayCardioLog');
+    if (!sessions.length) { el.innerHTML = '<p class="text-muted text-sm">No cardio logged today.</p>'; return; }
+    const icons = {WALKING:'🚶',RUNNING:'🏃',CYCLING:'🚴',HITT:'⚡',JUMP_ROPE:'🪢',CARDIO:'❤️'};
+    el.innerHTML = sessions.map(s => `
+      <div class="log-row">
+        <div class="log-row-left">
+          <div class="log-icon" style="background:rgba(16,185,129,0.15)">${icons[s.activityType]||'🏅'}</div>
+          <div>
+            <div class="log-title">${formatType(s.activityType)} <span class="badge badge-blue" style="font-size:0.7rem;">${s.cardioType}</span></div>
+            <div class="log-sub">${s.durationMinutes} min${s.distanceKm ? ' · '+s.distanceKm+' km' : ''}</div>
+          </div>
+        </div>
+        <div class="log-cal">${Math.round(s.caloriesBurned||0)} kcal</div>
+      </div>`).join('');
+  }
+
+  // ==================== OVERVIEW ====================
+  let macroChart = null, weeklyChart = null;
+
+  function buildOverview() {
+    const calIn    = todayFoodEntries.reduce((s,f) => s+(f.calories||0), 0);
+    const calBurn  = todayCardioSessions.reduce((s,c) => s+(c.caloriesBurned||0), 0)
+                   + todayGymSets.reduce((s,w) => s+(w.caloriesBurned||0), 0);
+    const protein  = todayFoodEntries.reduce((s,f) => s+(f.protein||0), 0);
+    const carbs    = todayFoodEntries.reduce((s,f) => s+(f.carbs||0), 0);
+    const fat      = todayFoodEntries.reduce((s,f) => s+(f.fat||0), 0);
+
+    document.getElementById('ovConsumed').textContent = Math.round(calIn);
+    document.getElementById('ovBurned').textContent   = Math.round(calBurn);
+    const net = Math.round(calIn - calBurn);
+    document.getElementById('netCalDisplay').textContent = `${net > 0 ? '+' : ''}${net} kcal`;
+    document.getElementById('netCalDisplay').style.color = net > 0 ? 'var(--warning)' : 'var(--accent)';
+
+    document.getElementById('calProgressBar').style.width = Math.min(100,Math.round(calIn/calTarget*100)) + '%';
+    document.getElementById('burnProgressBar').style.width = Math.min(100,Math.round(calBurn/calTarget*100)) + '%';
+
+    const mCtx = document.getElementById('macroChart').getContext('2d');
+    if (macroChart) macroChart.destroy();
+    macroChart = new Chart(mCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Protein','Carbs','Fat'],
+        datasets: [{ data:[protein||1,carbs||1,fat||1],
+          backgroundColor:['#3b82f6','#f59e0b','#ef4444'], borderWidth:0 }]
+      },
+      options: { plugins:{ legend:{ labels:{ color:'#374151', font:{size:12} } } }, cutout:'60%' }
+    });
+
+    const wCtx = document.getElementById('weeklyChart').getContext('2d');
+    if (weeklyChart) weeklyChart.destroy();
+    const todayBurn = calBurn;
+    const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const todayIdx = (new Date().getDay() + 6) % 7;
+    const weekData = days.map((_,i) => i === todayIdx ? todayBurn : 0);
+    weeklyChart = new Chart(wCtx, {
+      type: 'bar',
+      data: {
+        labels: days,
+        datasets: [{
+          label: 'Calories Burned',
+          data: weekData,
+          backgroundColor: days.map((_,i) => i===todayIdx ? '#2563eb' : 'rgba(37,99,235,0.25)'),
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        plugins:{ legend:{ labels:{ color:'#374151' } } },
+        scales: {
+          x:{ ticks:{ color:'#9ca3af' }, grid:{ color:'#e5e7eb' } },
+          y:{ ticks:{ color:'#9ca3af' }, grid:{ color:'#e5e7eb' } }
+        }
+      }
+    });
+  }
+
+  // ==================== Init ====================
+  loadProfile().then(loadToday);
+</script>
+</body>
+</html>

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitTrack — Nutrition</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .sec-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.5rem; }
+    .sec-hd h1 { font-size:1.45rem; font-weight:800; }
+
+    .stat-summary {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.1rem 1.4rem; margin-bottom: 1.25rem;
+      display: flex; flex-direction: column; gap: .55rem;
+    }
+    .stat-line {
+      font-size: .9rem; color: var(--text-muted);
+    }
+    .stat-line strong { color: var(--text); font-weight: 700; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebarContainer"></div>
+
+  <main class="main-content">
+    <div class="container" style="padding:1.5rem 1.5rem 2.5rem;">
+
+      <div class="sec-hd" style="margin-top:0;">
+        <div>
+          <h1>Nutrition Tracker</h1>
+          <p style="font-size:.875rem;color:var(--text-muted);margin-top:.2rem;">Log meals and track your daily macros.</p>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openModal()">+ Log Food</button>
+      </div>
+
+      <!-- Today's summary stat cards -->
+      <div class="stat-grid mb-6">
+        <div class="stat-card orange">
+          <div class="stat-label">Calories Today</div>
+          <div class="stat-value" id="todayCals">0</div>
+          <div class="stat-sub" id="calTargetSub">/ 2000 target</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-label">Protein</div>
+          <div class="stat-value" id="todayProtein">0<span class="stat-unit">g</span></div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Carbs</div>
+          <div class="stat-value" id="todayCarbs">0<span class="stat-unit">g</span></div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-label">Fat</div>
+          <div class="stat-value" id="todayFat">0<span class="stat-unit">g</span></div>
+        </div>
+      </div>
+
+      <!-- Plain text macro summary -->
+      <div class="stat-summary">
+        <div class="stat-line">Calories: <strong id="prgCals">0</strong> / <strong id="prgTarget">2000</strong> kcal</div>
+        <div class="stat-line">Protein: <strong id="prgProt">0g</strong> / <strong id="prgProtTarget">120g</strong> target</div>
+        <div class="stat-line">Meals logged today: <strong id="mealsCount">0</strong></div>
+      </div>
+
+      <!-- Today's food entries -->
+      <div class="card mb-6">
+        <div class="card-header">
+          <span class="card-title">Today's Food Log</span>
+          <button class="btn btn-ghost btn-sm" onclick="toggleHistory()">View All</button>
+        </div>
+        <div id="todayFoodList">
+          <p class="text-muted text-sm">No food logged today.</p>
+        </div>
+      </div>
+
+      <!-- Full history (hidden by default) -->
+      <div class="card hidden" id="historySection">
+        <div class="card-header">
+          <span class="card-title">Full Food History</span>
+          <button class="btn btn-ghost btn-sm" onclick="toggleHistory()">Hide</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Food</th><th>Meal</th><th>Calories</th><th>P/C/F</th><th>Date</th><th></th></tr>
+            </thead>
+            <tbody id="historyTableBody">
+              <tr><td colspan="6" class="text-muted">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Log Food Modal -->
+<div class="modal-overlay" id="foodModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Log Food</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modalAlert"></div>
+
+    <!-- Nepali Food Quick Select -->
+    <div class="form-group">
+      <label>Quick Select (Nepali Foods)</label>
+      <select class="form-control" id="nepaliSelect" onchange="fillNepaliFood()">
+        <option value="">Choose a common food...</option>
+      </select>
+    </div>
+    <div style="text-align:center;margin:8px 0;color:var(--text-dim);font-size:0.8rem;">— or enter manually —</div>
+
+    <form id="foodForm">
+      <div class="form-group">
+        <label>Food Name *</label>
+        <input type="text" class="form-control" id="foodName" placeholder="e.g. Dal Bhat, Momo" required />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Calories (kcal) *</label>
+          <input type="number" class="form-control" id="foodCals" placeholder="200" min="0" step="0.1" required />
+        </div>
+        <div class="form-group">
+          <label>Serving Size (g)</label>
+          <input type="number" class="form-control" id="foodServing" placeholder="100" min="0" step="0.1" />
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>Protein (g)</label>
+          <input type="number" class="form-control" id="foodProtein" placeholder="0" min="0" step="0.1" />
+        </div>
+        <div class="form-group">
+          <label>Carbs (g)</label>
+          <input type="number" class="form-control" id="foodCarbs" placeholder="0" min="0" step="0.1" />
+        </div>
+        <div class="form-group">
+          <label>Fat (g)</label>
+          <input type="number" class="form-control" id="foodFat" placeholder="0" min="0" step="0.1" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Meal Type *</label>
+          <select class="form-control" id="foodMeal" required>
+            <option value="BREAKFAST">Breakfast</option>
+            <option value="LUNCH">Lunch</option>
+            <option value="DINNER">Dinner</option>
+            <option value="SNACK">Snack</option>
+            <option value="PRE_WORKOUT">Pre-Workout</option>
+            <option value="POST_WORKOUT">Post-Workout</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date & Time</label>
+          <input type="datetime-local" class="form-control" id="foodTime" />
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary" id="saveFoodBtn">Save Food</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/sidebar.js"></script>
+<script>
+  requireAuth();
+  document.getElementById('sidebarContainer').innerHTML = renderSidebar();
+  initSidebar();
+
+  // Populate Nepali food dropdown
+  const sel = document.getElementById('nepaliSelect');
+  NEPALI_FOODS.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = JSON.stringify(f);
+    opt.textContent = f.name;
+    sel.appendChild(opt);
+  });
+
+  // Set default datetime
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('foodTime').value = now.toISOString().slice(0, 16);
+
+  let calTarget = 2000, protTarget = 120;
+
+  async function loadProfile() {
+    try {
+      const p = await api.getProfile();
+      if (p.dailyCalorieTarget) {
+        calTarget = p.dailyCalorieTarget;
+        document.getElementById('calTargetSub').textContent = `/ ${calTarget} target`;
+        document.getElementById('prgTarget').textContent = calTarget;
+      }
+      if (p.dailyProteinTarget) {
+        protTarget = p.dailyProteinTarget;
+        document.getElementById('prgProtTarget').textContent = protTarget + 'g';
+      }
+    } catch (_) {}
+  }
+
+  async function loadToday() {
+    try {
+      const entries = await api.getTodayFood();
+      renderTodayStats(entries);
+      renderTodayList(entries);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function renderTodayStats(entries) {
+    const cals  = entries.reduce((s, e) => s + (e.calories || 0), 0);
+    const prot  = entries.reduce((s, e) => s + (e.protein  || 0), 0);
+    const carbs = entries.reduce((s, e) => s + (e.carbs    || 0), 0);
+    const fat   = entries.reduce((s, e) => s + (e.fat      || 0), 0);
+
+    document.getElementById('todayCals').textContent    = Math.round(cals);
+    document.getElementById('todayProtein').innerHTML   = `${Math.round(prot)}<span class="stat-unit">g</span>`;
+    document.getElementById('todayCarbs').innerHTML     = `${Math.round(carbs)}<span class="stat-unit">g</span>`;
+    document.getElementById('todayFat').innerHTML       = `${Math.round(fat)}<span class="stat-unit">g</span>`;
+    document.getElementById('mealsCount').textContent   = entries.length;
+    document.getElementById('prgCals').textContent      = Math.round(cals);
+    document.getElementById('prgProt').textContent      = Math.round(prot) + 'g';
+  }
+
+  function renderTodayList(entries) {
+    const el = document.getElementById('todayFoodList');
+    if (!entries.length) {
+      el.innerHTML = '<p class="text-muted text-sm">No food logged today. Click "+ Log Food" to start!</p>';
+      return;
+    }
+    const byMeal = {};
+    entries.forEach(e => {
+      if (!byMeal[e.mealType]) byMeal[e.mealType] = [];
+      byMeal[e.mealType].push(e);
+    });
+    const mealOrder = ['BREAKFAST','LUNCH','DINNER','SNACK','PRE_WORKOUT','POST_WORKOUT'];
+    el.innerHTML = mealOrder.filter(m => byMeal[m]).map(meal => `
+      <div class="mb-4">
+        <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px;">
+          ${meal.replace(/_/g,' ')}
+        </div>
+        <div class="item-list">
+          ${byMeal[meal].map(f => `
+            <div class="item-row">
+              <div class="item-row-left">
+                <div class="item-icon" style="background:rgba(245,158,11,0.15)">🍛</div>
+                <div>
+                  <div class="item-title">${f.foodName}</div>
+                  <div class="item-sub">${f.protein ?? 0}g P · ${f.carbs ?? 0}g C · ${f.fat ?? 0}g F</div>
+                </div>
+              </div>
+              <div class="item-right" style="display:flex;align-items:center;gap:12px;">
+                <div>
+                  <div class="item-value">${f.calories ?? 0}</div>
+                  <div class="item-unit">kcal</div>
+                </div>
+                <button class="btn btn-danger btn-sm" onclick="deleteFood('${f.id}')">✕</button>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`).join('');
+  }
+
+  async function loadHistory() {
+    try {
+      const entries = await api.getFoodEntries();
+      const tbody = document.getElementById('historyTableBody');
+      if (!entries.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No food entries yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = entries.map(f => `
+        <tr>
+          <td class="font-bold">${f.foodName}</td>
+          <td><span class="badge badge-orange">${f.mealType.replace(/_/g,' ')}</span></td>
+          <td>${f.calories ?? 0} kcal</td>
+          <td class="text-muted text-sm">${f.protein ?? 0}P / ${f.carbs ?? 0}C / ${f.fat ?? 0}F</td>
+          <td class="text-muted text-sm">${formatDateTime(f.loggedAt)}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteFood('${f.id}')">Delete</button></td>
+        </tr>`).join('');
+    } catch (err) { console.error(err); }
+  }
+
+  function toggleHistory() {
+    const sec = document.getElementById('historySection');
+    sec.classList.toggle('hidden');
+    if (!sec.classList.contains('hidden')) loadHistory();
+  }
+
+  function openModal()  { document.getElementById('foodModal').classList.add('open'); }
+  function closeModal() {
+    document.getElementById('foodModal').classList.remove('open');
+    document.getElementById('foodForm').reset();
+    document.getElementById('nepaliSelect').value = '';
+    document.getElementById('modalAlert').innerHTML = '';
+  }
+
+  function fillNepaliFood() {
+    const val = document.getElementById('nepaliSelect').value;
+    if (!val) return;
+    const food = JSON.parse(val);
+    document.getElementById('foodName').value    = food.name;
+    document.getElementById('foodCals').value    = food.calories;
+    document.getElementById('foodProtein').value = food.protein;
+    document.getElementById('foodCarbs').value   = food.carbs;
+    document.getElementById('foodFat').value     = food.fat;
+    document.getElementById('foodServing').value = food.serving;
+  }
+
+  document.getElementById('foodForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('saveFoodBtn');
+    setLoading(btn, true);
+    try {
+      const userId = localStorage.getItem('userId');
+      const t = document.getElementById('foodTime').value;
+      await api.logFood({
+        userId,
+        foodName:    document.getElementById('foodName').value,
+        calories:    parseFloat(document.getElementById('foodCals').value),
+        protein:     parseFloat(document.getElementById('foodProtein').value) || 0,
+        carbs:       parseFloat(document.getElementById('foodCarbs').value)   || 0,
+        fat:         parseFloat(document.getElementById('foodFat').value)     || 0,
+        servingSize: parseFloat(document.getElementById('foodServing').value) || 100,
+        mealType:    document.getElementById('foodMeal').value,
+        loggedAt:    t ? new Date(t).toISOString() : new Date().toISOString(),
+      });
+      closeModal();
+      loadToday();
+    } catch (err) {
+      showAlert('modalAlert', err.message || 'Failed to save food entry');
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+
+  async function deleteFood(id) {
+    if (!confirm('Delete this food entry?')) return;
+    try {
+      await api.deleteFood(id);
+      loadToday();
+    } catch (err) {
+      alert('Failed to delete: ' + err.message);
+    }
+  }
+
+  loadProfile().then(loadToday);
+</script>
+</body>
+</html>

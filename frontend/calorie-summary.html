@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitTrack — Daily Calorie Summary</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* ── Summary table ── */
+    .summary-table { width:100%; border-collapse:collapse; }
+    .summary-table tr { border-bottom:1px solid var(--border); }
+    .summary-table tr:last-child { border-bottom:none; }
+    .summary-table td { padding:13px 14px; font-size:0.9rem; vertical-align:middle; }
+    .summary-table td:first-child { color:var(--text-muted); width:55%; }
+    .summary-table td:last-child  { font-weight:700; text-align:right; }
+    .summary-table .section-head td {
+      background:var(--bg-input); color:var(--text-dim);
+      font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.6px;
+      padding:8px 14px;
+    }
+
+    /* ── Status pill ── */
+    .status-pill {
+      display:inline-block; padding:4px 14px; border-radius:999px;
+      font-size:0.8rem; font-weight:700;
+    }
+    .status-DEFICIT   { background:rgba(16,185,129,0.15);  color:var(--accent); }
+    .status-SURPLUS   { background:rgba(239,68,68,0.15);   color:var(--danger); }
+    .status-ON_TRACK  { background:#dbeafe; color:var(--primary); }
+
+    /* ── Plain text macro stats ── */
+    .macro-stats {
+      display: flex; flex-direction: column; gap: .6rem;
+      padding: 1rem 0;
+    }
+    .macro-stat-line {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: .9rem; padding: .5rem .75rem;
+      background: var(--bg); border-radius: 8px;
+    }
+    .macro-stat-line .ms-label { color: var(--text-muted); }
+    .macro-stat-line .ms-value { font-weight: 700; }
+    .ms-over { color: var(--danger); }
+    .ms-ok   { color: var(--accent); }
+
+    /* ── Balance text ── */
+    .balance-display {
+      text-align: center; padding: 1.25rem .75rem;
+    }
+    .balance-number {
+      font-size: 2rem; font-weight: 800; line-height: 1.1;
+    }
+    .balance-label {
+      font-size: .82rem; color: var(--text-muted); margin-top: .4rem;
+    }
+
+    /* ── BMR breakdown ── */
+    .bmr-card {
+      display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;
+    }
+    .bmr-item { text-align:center; }
+    .bmr-val  { font-size:1.2rem; font-weight:700; }
+    .bmr-lbl  { font-size:0.72rem; color:var(--text-muted); margin-top:2px; }
+
+    /* ── Yesterday carry-over ── */
+    .carry-badge {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:6px 14px; border-radius:8px; font-size:0.82rem; font-weight:600;
+    }
+    .carry-surplus { background:rgba(239,68,68,0.12);  color:var(--danger); }
+    .carry-deficit { background:rgba(16,185,129,0.12); color:var(--accent); }
+    .carry-ok      { background:#dbeafe; color:var(--primary); }
+
+    /* ── Date picker ── */
+    .date-nav { display:flex; align-items:center; gap:10px; }
+    .date-nav button { background:var(--bg-input); border:1px solid var(--border); border-radius:8px;
+                       color:var(--text-muted); padding:6px 12px; cursor:pointer; font-size:0.85rem; }
+    .date-nav button:hover { color:var(--text); }
+
+    /* ── Skeleton loader ── */
+    .skeleton { animation:shimmer 1.2s infinite; background:linear-gradient(90deg,var(--bg-input) 25%,var(--border) 50%,var(--bg-input) 75%); background-size:200% 100%; border-radius:6px; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .sk-line { height:16px; margin-bottom:8px; }
+
+    /* ── Page header ── */
+    .sec-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.5rem; }
+    .sec-hd h1 { font-size:1.45rem; font-weight:800; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebarContainer"></div>
+
+  <main class="main-content">
+    <div class="container" style="padding:1.5rem 1.5rem 2.5rem;">
+
+      <div class="sec-hd" style="margin-top:0;">
+        <div>
+          <h1>Daily Calorie Summary</h1>
+          <p style="font-size:.875rem;color:var(--text-muted);margin-top:.2rem;">Track your energy balance for the day.</p>
+        </div>
+        <div class="date-nav">
+          <button onclick="changeDate(-1)">← Prev</button>
+          <input type="date" id="datePicker" class="form-control" style="width:150px;padding:6px 10px;"
+                 onchange="loadSummary()" />
+          <button onclick="changeDate(1)">Next →</button>
+        </div>
+      </div>
+
+      <!-- Loading skeleton -->
+      <div id="skeleton">
+        <div class="stat-grid mb-6">
+          <div class="stat-card"><div class="skeleton sk-line" style="width:60%;"></div><div class="skeleton sk-line" style="width:40%;height:28px;margin-top:6px;"></div></div>
+          <div class="stat-card"><div class="skeleton sk-line" style="width:60%;"></div><div class="skeleton sk-line" style="width:40%;height:28px;margin-top:6px;"></div></div>
+          <div class="stat-card"><div class="skeleton sk-line" style="width:60%;"></div><div class="skeleton sk-line" style="width:40%;height:28px;margin-top:6px;"></div></div>
+          <div class="stat-card"><div class="skeleton sk-line" style="width:60%;"></div><div class="skeleton sk-line" style="width:40%;height:28px;margin-top:6px;"></div></div>
+        </div>
+        <div class="card mb-6"><div class="skeleton sk-line"></div><div class="skeleton sk-line"></div><div class="skeleton sk-line" style="width:70%"></div></div>
+      </div>
+
+      <!-- Actual content (hidden until loaded) -->
+      <div id="summaryContent" class="hidden">
+
+        <!-- Top stats -->
+        <div class="stat-grid mb-6" id="topStats"></div>
+
+        <!-- Main layout -->
+        <div class="grid-2 mb-6" style="gap:20px;align-items:start;">
+
+          <!-- Left: Full breakdown table -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Calorie Breakdown</span>
+              <span class="status-pill" id="statusPill">—</span>
+            </div>
+            <table class="summary-table" id="breakdownTable"></table>
+          </div>
+
+          <!-- Right: Plain text panels -->
+          <div style="display:flex;flex-direction:column;gap:16px;">
+
+            <!-- Balance -->
+            <div class="card">
+              <div class="card-title mb-3">Energy Balance</div>
+              <div class="balance-display">
+                <div class="balance-number" id="balanceNumber">—</div>
+                <div class="balance-label" id="balanceLabel">Loading…</div>
+              </div>
+            </div>
+
+            <!-- BMR breakdown -->
+            <div class="card">
+              <div class="card-title mb-4">Energy Expenditure</div>
+              <div class="bmr-card" id="bmrCard"></div>
+            </div>
+
+            <!-- Macro vs Target plain text -->
+            <div class="card">
+              <div class="card-title mb-3">Macros vs Target</div>
+              <div class="macro-stats" id="macroStats"></div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Yesterday carry-over -->
+        <div class="card mb-6" id="yesterdayCard">
+          <div class="card-header">
+            <span class="card-title">Yesterday's Carry-Over</span>
+            <span id="yesterdayBadge"></span>
+          </div>
+          <div id="yesterdayBody"></div>
+        </div>
+
+      </div><!-- /summaryContent -->
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/sidebar.js"></script>
+<script>
+  requireAuth();
+  document.getElementById('sidebarContainer').innerHTML = renderSidebar();
+  initSidebar();
+
+  // Set date picker to today
+  const todayStr = new Date().toISOString().split('T')[0];
+  document.getElementById('datePicker').value = todayStr;
+  document.getElementById('datePicker').max   = todayStr;
+
+  function changeDate(days) {
+    const picker = document.getElementById('datePicker');
+    const d = new Date(picker.value);
+    d.setDate(d.getDate() + days);
+    const newVal = d.toISOString().split('T')[0];
+    if (newVal <= todayStr) { picker.value = newVal; loadSummary(); }
+  }
+
+  async function loadSummary() {
+    document.getElementById('skeleton').classList.remove('hidden');
+    document.getElementById('summaryContent').classList.add('hidden');
+
+    const date = document.getElementById('datePicker').value;
+    try {
+      const d = await api.getCalorieSummary(date);
+      renderSummary(d);
+      document.getElementById('skeleton').classList.add('hidden');
+      document.getElementById('summaryContent').classList.remove('hidden');
+    } catch(err) {
+      document.getElementById('skeleton').innerHTML =
+        `<div class="alert alert-error">Failed to load summary: ${err.message}</div>`;
+    }
+  }
+
+  function renderSummary(d) {
+    // ── Top stats ──
+    const net = d.caloriesIn - d.totalCaloriesOut;
+    document.getElementById('topStats').innerHTML = `
+      <div class="stat-card orange">
+        <div class="stat-label">Calories In</div>
+        <div class="stat-value">${fmt(d.caloriesIn)}</div>
+        <div class="stat-sub">/ ${fmt(d.dailyGoal)} goal</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Total Burned</div>
+        <div class="stat-value">${fmt(d.totalCaloriesOut)}</div>
+        <div class="stat-sub">BMR + exercise</div>
+      </div>
+      <div class="stat-card ${d.deficitSurplus > 150 ? 'red' : d.deficitSurplus < -150 ? 'blue' : 'purple'}">
+        <div class="stat-label">${d.deficitSurplus >= 0 ? 'Surplus' : 'Deficit'}</div>
+        <div class="stat-value">${Math.abs(d.deficitSurplus)}</div>
+        <div class="stat-sub">kcal ${d.deficitSurplus >= 0 ? 'over' : 'under'} goal</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">Net Calories</div>
+        <div class="stat-value">${fmt(net)}</div>
+        <div class="stat-sub">in minus burned</div>
+      </div>`;
+
+    // ── Status pill ──
+    const statusLabels = {DEFICIT:'Calorie Deficit ✓', SURPLUS:'Calorie Surplus', ON_TRACK:'On Track ✓'};
+    const pill = document.getElementById('statusPill');
+    pill.textContent = statusLabels[d.balanceStatus] || d.balanceStatus;
+    pill.className   = `status-pill status-${d.balanceStatus}`;
+
+    // ── Breakdown table ──
+    const rows = [
+      ['CALORIES IN', null],
+      ['Food consumed today',    `${fmt(d.caloriesIn)} kcal`,               'var(--warning)'],
+      ['Protein',                `${d.proteinGrams}g`,                       'var(--info)'],
+      ['Carbohydrates',          `${d.carbsGrams}g`,                         'var(--warning)'],
+      ['Fat',                    `${d.fatGrams}g`,                           'var(--danger)'],
+
+      ['CALORIES OUT', null],
+      ['BMR (resting burn)',     `${fmt(d.bmr)} kcal`,                       null],
+      ['Activity level (TDEE)', `${fmt(d.tdee)} kcal`,                      null],
+      ['Exercise burned today',  `${fmt(d.caloriesBurnedExercise)} kcal`,    'var(--accent)'],
+      ['Total calories out',     `${fmt(d.totalCaloriesOut)} kcal`,          'var(--accent)'],
+
+      ['GOAL & BALANCE', null],
+      ['Daily calorie goal',     `${fmt(d.dailyGoal)} kcal`,                 null],
+      ['Fitness goal',           fmtEnum(d.fitnessGoal),                     null],
+      ['Activity level',         fmtEnum(d.activityLevel),                   null],
+      ['Deficit / Surplus',      `${d.deficitSurplus >= 0 ? '+' : ''}${fmt(d.deficitSurplus)} kcal`,
+         d.deficitSurplus > 150 ? 'var(--danger)' : d.deficitSurplus < -150 ? 'var(--accent)' : 'var(--primary-light)'],
+
+      ['MACRO TARGETS', null],
+      ['Protein target',  `${d.proteinTargetGrams}g (${pct(d.proteinGrams, d.proteinTargetGrams)}%)`, null],
+      ['Carbs target',    `${d.carbsTargetGrams}g (${pct(d.carbsGrams, d.carbsTargetGrams)}%)`,       null],
+      ['Fat target',      `${d.fatTargetGrams}g (${pct(d.fatGrams, d.fatTargetGrams)}%)`,             null],
+    ];
+
+    document.getElementById('breakdownTable').innerHTML = rows.map(([label, val, color]) => {
+      if (!val) return `<tr class="section-head"><td colspan="2">${label}</td></tr>`;
+      return `<tr>
+        <td>${label}</td>
+        <td style="${color ? 'color:'+color : ''}">${val}</td>
+      </tr>`;
+    }).join('');
+
+    // ── Balance plain text ──
+    const ds = d.deficitSurplus;
+    const balNum = document.getElementById('balanceNumber');
+    balNum.textContent = `${ds >= 0 ? '+' : ''}${fmt(ds)} kcal`;
+    balNum.style.color = ds > 150 ? 'var(--danger)' : ds < -150 ? 'var(--accent)' : 'var(--primary-light)';
+    document.getElementById('balanceLabel').textContent = statusLabels[d.balanceStatus] || '';
+
+    // ── BMR card ──
+    document.getElementById('bmrCard').innerHTML = `
+      <div class="bmr-item">
+        <div class="bmr-val">${fmt(d.bmr)}</div>
+        <div class="bmr-lbl">BMR (kcal)</div>
+      </div>
+      <div class="bmr-item">
+        <div class="bmr-val" style="color:var(--primary-light)">${fmt(d.tdee)}</div>
+        <div class="bmr-lbl">TDEE (kcal)</div>
+      </div>
+      <div class="bmr-item">
+        <div class="bmr-val" style="color:var(--accent)">${fmt(d.caloriesBurnedExercise)}</div>
+        <div class="bmr-lbl">Exercise (kcal)</div>
+      </div>`;
+
+    // ── Macros vs target plain text ──
+    const macros = [
+      { label: 'Protein', actual: d.proteinGrams, target: d.proteinTargetGrams, color: 'var(--info)' },
+      { label: 'Carbs',   actual: d.carbsGrams,   target: d.carbsTargetGrams,   color: 'var(--warning)' },
+      { label: 'Fat',     actual: d.fatGrams,      target: d.fatTargetGrams,     color: 'var(--danger)' },
+    ];
+    document.getElementById('macroStats').innerHTML = macros.map(m => {
+      const over = m.actual > m.target;
+      const p = Math.min(200, Math.round((m.actual / (m.target || 1)) * 100));
+      return `<div class="macro-stat-line">
+        <span class="ms-label">${m.label}</span>
+        <span class="ms-value ${over ? 'ms-over' : 'ms-ok'}" style="color:${m.color}">
+          ${m.actual}g / ${m.target}g (${p}%)${over ? ' ⚠️' : ''}
+        </span>
+      </div>`;
+    }).join('');
+
+    // ── Yesterday ──
+    const yd = d.yesterdayDeficitSurplus;
+    if (yd !== null && yd !== undefined) {
+      const yAbs  = Math.abs(yd);
+      const ySurp = yd > 0;
+      document.getElementById('yesterdayBadge').innerHTML = `
+        <span class="carry-badge ${Math.abs(yd) <= 150 ? 'carry-ok' : ySurp ? 'carry-surplus' : 'carry-deficit'}">
+          ${yd >= 0 ? '+' : ''}${fmt(yd)} kcal ${d.yesterdayStatus?.replace(/_/g,' ')}
+        </span>`;
+      document.getElementById('yesterdayBody').innerHTML = `
+        <div style="font-size:0.88rem;color:var(--text-muted);line-height:1.7;">
+          ${Math.abs(yd) <= 150
+            ? 'Yesterday you hit your calorie goal accurately. No adjustment needed today from carry-over.'
+            : ySurp
+              ? `Yesterday you consumed <strong style="color:var(--danger)">${fmt(yAbs)} kcal above</strong> your goal.
+                 A carry-over adjustment of <strong>${fmt(Math.abs(d.yesterdayCarryOverAdjustment))} kcal reduction</strong>
+                 has been factored into today's recommendation.`
+              : `Yesterday you consumed <strong style="color:var(--accent)">${fmt(yAbs)} kcal below</strong> your goal.
+                 A carry-over adjustment of <strong>${fmt(Math.abs(d.yesterdayCarryOverAdjustment))} kcal addition</strong>
+                 has been factored into today's recommendation.`
+          }
+        </div>`;
+    } else {
+      document.getElementById('yesterdayBody').innerHTML =
+        '<p class="text-muted text-sm">No data for yesterday yet.</p>';
+    }
+  }
+
+  // ── Helpers ──
+  function fmt(n)     { return Math.round(n != null ? n : 0); }
+  function fmtEnum(s) { return s ? s.replace(/_/g,' ') : '—'; }
+  function pct(a, t)  { return t ? Math.min(200, Math.round((a/t)*100)) : 0; }
+
+  loadSummary();
+</script>
+</body>
+</html>

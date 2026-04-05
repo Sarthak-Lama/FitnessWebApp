@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Next Day Plan — FitTrack</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* ── Page layout ─────────────────────────────────── */
+    .page-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;
+    }
+    .page-header h1 { font-size: 1.4rem; font-weight: 700; }
+    .plan-date-badge {
+      background: var(--primary); color: #fff;
+      padding: .35rem 1rem; border-radius: 4px;
+      font-weight: 600; font-size: .88rem;
+    }
+
+    /* ── Overall message card ────────────────────────── */
+    .overall-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem;
+      border-left: 4px solid var(--accent);
+    }
+    .overall-card p { color: var(--text-secondary); line-height: 1.7; font-size: .95rem; }
+
+    /* ── Rest day banner ─────────────────────────────── */
+    .rest-banner {
+      background: #f5f3ff; border: 1px solid #ddd6fe;
+      border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem;
+      display: flex; gap: 1rem; align-items: flex-start;
+    }
+    .rest-banner h3 { color: #6d28d9; font-size: 1rem; margin-bottom: .35rem; }
+    .rest-banner p  { color: var(--text-secondary); font-size: .88rem; line-height: 1.6; }
+    .consecutive-badge {
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: #ede9fe; color: #6d28d9;
+      padding: .2rem .75rem; border-radius: 4px;
+      font-size: .78rem; font-weight: 600; margin-top: .5rem;
+    }
+
+    /* ── Section headers ─────────────────────────────── */
+    .section-header {
+      margin: 1.75rem 0 .85rem;
+    }
+    .section-header h2 { font-size: 1.05rem; font-weight: 700; }
+
+    /* ── Calorie target bar ──────────────────────────── */
+    .target-row {
+      display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;
+    }
+    .target-card {
+      flex: 1; min-width: 140px; background: var(--card-bg);
+      border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem;
+      text-align: center;
+    }
+    .target-card .tc-val { font-size: 1.6rem; font-weight: 800; color: var(--accent); }
+    .target-card .tc-lbl { font-size: .75rem; color: var(--text-secondary); margin-top: .2rem; }
+    .target-card .tc-sub { font-size: .72rem; color: var(--text-secondary); opacity: .8; margin-top: .2rem; }
+    .adj-positive { color: var(--accent) !important; }
+    .adj-negative { color: var(--danger) !important; }
+
+    /* ── Meal plan grid ──────────────────────────────── */
+    .meal-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem; margin-bottom: 1.25rem;
+    }
+    .meal-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.1rem;
+    }
+
+    .meal-type-badge {
+      display: inline-block; padding: .15rem .6rem; border-radius: 4px;
+      font-size: .72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .04em; margin-bottom: .7rem;
+    }
+    .badge-BREAKFAST       { background: #fef3c7; color: #92400e; }
+    .badge-MORNING_SNACK   { background: #dcfce7; color: #15803d; }
+    .badge-LUNCH           { background: #dbeafe; color: #1d4ed8; }
+    .badge-AFTERNOON_SNACK { background: #ede9fe; color: #6d28d9; }
+    .badge-DINNER          { background: #fee2e2; color: #991b1b; }
+
+    .meal-card h3 { font-size: .95rem; font-weight: 700; margin-bottom: .2rem; }
+    .meal-nepali  { font-size: .78rem; color: var(--text-secondary); font-style: italic; margin-bottom: .5rem; }
+    .meal-serving { font-size: .78rem; color: var(--text-secondary); margin-bottom: .75rem; }
+    .meal-cal     { font-size: 1.3rem; font-weight: 800; color: var(--accent); }
+    .meal-cal span{ font-size: .75rem; color: var(--text-secondary); font-weight: 400; }
+
+    .meal-macros { display: flex; gap: .4rem; margin: .6rem 0; }
+    .macro-pill {
+      flex: 1; text-align: center; padding: .3rem .2rem;
+      border-radius: 4px; font-size: .72rem;
+    }
+    .macro-prot { background: #dbeafe; color: #1d4ed8; }
+    .macro-carb { background: #fef3c7; color: #92400e; }
+    .macro-fat  { background: #fee2e2; color: #991b1b; }
+    .macro-pill .mp-val { font-weight: 700; font-size: .88rem; display: block; }
+
+    .meal-tip {
+      font-size: .78rem; color: var(--text-secondary); line-height: 1.5;
+      border-top: 1px solid var(--border); padding-top: .6rem; margin-top: .6rem;
+    }
+
+    /* ── Meal plan totals bar ────────────────────────── */
+    .meal-totals {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem 1.25rem;
+      display: flex; gap: 2rem; flex-wrap: wrap; align-items: center;
+      margin-bottom: 1rem;
+    }
+    .mt-item { text-align: center; }
+    .mt-val  { font-size: 1.2rem; font-weight: 800; }
+    .mt-lbl  { font-size: .72rem; color: var(--text-secondary); }
+    .mt-cal  { color: var(--accent); }
+    .mt-p    { color: #1d4ed8; }
+    .mt-c    { color: #92400e; }
+    .mt-f    { color: #991b1b; }
+
+    .macro-doughnut-wrapper { display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; }
+    #mealMacroPie { max-width: 140px; max-height: 140px; }
+
+    /* ── Exercise plan card ──────────────────────────── */
+    .exercise-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem;
+    }
+    .exercise-header {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: .75rem; margin-bottom: 1rem;
+    }
+    .session-type-badge {
+      padding: .2rem .75rem; border-radius: 4px;
+      font-size: .75rem; font-weight: 700; text-transform: uppercase;
+    }
+    .badge-GYM           { background: #fef3c7; color: #92400e; }
+    .badge-CARDIO        { background: #dcfce7; color: #15803d; }
+    .badge-REST          { background: #ede9fe; color: #6d28d9; }
+    .badge-LIGHT_ACTIVITY{ background: #dbeafe; color: #1d4ed8; }
+
+    .intensity-dot {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: .35rem;
+    }
+    .i-LOW      { background: #16a34a; }
+    .i-MODERATE { background: #d97706; }
+    .i-HIGH     { background: #dc2626; }
+
+    .exercise-meta { display: flex; gap: 1.25rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .meta-item { display: flex; align-items: center; gap: .4rem; font-size: .85rem; color: var(--text-secondary); }
+    .meta-item svg { opacity: .5; }
+
+    .exercise-list { list-style: none; padding: 0; margin: 0 0 1rem; }
+    .exercise-list li {
+      display: flex; align-items: center; gap: .7rem;
+      padding: .5rem 0; border-bottom: 1px solid var(--border);
+      font-size: .88rem;
+    }
+    .exercise-list li:last-child { border-bottom: none; }
+    .ex-bullet {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--primary); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .68rem; font-weight: 700; flex-shrink: 0;
+    }
+
+    .exercise-notes {
+      background: #fffbeb; border: 1px solid #fde68a;
+      border-radius: 4px; padding: .85rem 1rem;
+      font-size: .85rem; color: var(--text-secondary); line-height: 1.6;
+    }
+
+    /* ── Muscle group focus indicator ────────────────── */
+    .muscle-focus { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .85rem; }
+    .muscle-chip {
+      padding: .25rem .75rem; border-radius: 4px;
+      background: var(--bg-input); color: var(--text-muted);
+      border: 1px solid var(--border);
+      font-size: .75rem; font-weight: 600;
+    }
+    .muscle-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* ── Reminders list ──────────────────────────────── */
+    .reminders-list { display: flex; flex-direction: column; gap: .75rem; }
+    .reminder-item {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .9rem 1.1rem;
+      font-size: .88rem; color: var(--text-secondary); line-height: 1.6;
+      border-left: 3px solid var(--border);
+    }
+    .reminder-item.water  { border-left-color: #2563eb; }
+    .reminder-item.sleep  { border-left-color: #6d28d9; }
+    .reminder-item.protein{ border-left-color: #16a34a; }
+    .reminder-item.warning{ border-left-color: #d97706; }
+    .reminder-item.medical{ border-left-color: #dc2626; }
+    .reminder-item.balance{ border-left-color: #6b7280; }
+
+    /* ── Loading / error ─────────────────────────────── */
+    .plan-loading, .plan-error { text-align: center; padding: 3rem 1rem; color: var(--text-secondary); }
+    .plan-error { color: var(--danger); }
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid var(--border);
+      border-top-color: var(--primary); border-radius: 50%;
+      animation: spin .7s linear infinite; margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Refresh btn ─────────────────────────────────── */
+    .refresh-btn {
+      display: flex; align-items: center; gap: .5rem;
+      background: var(--card-bg); border: 1px solid var(--border);
+      color: var(--text-secondary); padding: .45rem 1rem;
+      border-radius: var(--radius); cursor: pointer; font-size: .85rem;
+    }
+    .refresh-btn:hover { border-color: var(--primary); color: var(--primary); }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebarContainer"></div>
+
+  <main class="main-content">
+    <div class="container">
+
+      <!-- Header -->
+      <div class="page-header">
+        <div>
+          <h1>Next Day Plan</h1>
+          <p style="color:var(--text-secondary);margin-top:.25rem;font-size:.9rem;">
+            Personalised meal &amp; exercise plan generated from today's activity
+          </p>
+        </div>
+        <div style="display:flex;align-items:center;gap:.75rem;">
+          <span class="plan-date-badge" id="planDateBadge">Loading…</span>
+          <button class="refresh-btn" id="refreshBtn" title="Regenerate plan">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Plan content -->
+      <div id="planContent">
+        <div class="plan-loading">
+          <div class="spinner"></div>
+          <p>Generating your personalised plan…</p>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/sidebar.js"></script>
+<script>
+requireAuth();
+document.getElementById('sidebarContainer').innerHTML = renderSidebar();
+initSidebar();
+
+let macroPieChart = null;
+
+async function loadPlan() {
+  const container = document.getElementById('planContent');
+  container.innerHTML = `
+    <div class="plan-loading">
+      <div class="spinner"></div>
+      <p>Generating your personalised plan…</p>
+    </div>`;
+
+  try {
+    const plan = await api.getNextDayPlan();
+    renderPlan(plan);
+  } catch (e) {
+    container.innerHTML = `
+      <div class="plan-error">
+        <p>Could not load plan: ${e.message}</p>
+        <p style="margin-top:.5rem;font-size:.85rem;color:var(--text-secondary);">
+          Make sure you have logged some activity today.
+        </p>
+      </div>`;
+  }
+}
+
+function renderPlan(p) {
+  document.getElementById('planDateBadge').textContent =
+    'Plan for ' + formatDate(p.planDate);
+
+  let html = '';
+
+  // ── Overall message ──────────────────────────────────────────────
+  html += `
+  <div class="overall-card">
+    <p>${p.overallMessage}</p>
+  </div>`;
+
+  // ── Rest day banner ──────────────────────────────────────────────
+  if (p.restDayRecommended) {
+    html += `
+    <div class="rest-banner">
+      <div>
+        <h3>Rest Day Recommended</h3>
+        <p>${p.restDayReason}</p>
+        <span class="consecutive-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+          ${p.consecutiveGymDays} consecutive gym days
+        </span>
+      </div>
+    </div>`;
+  }
+
+  // ── Calorie targets ──────────────────────────────────────────────
+  const adjSign  = p.adjustment >= 0 ? '+' : '';
+  const adjClass = p.adjustment < 0 ? 'adj-negative' : (p.adjustment > 0 ? 'adj-positive' : '');
+  html += `
+  <div class="target-row">
+    <div class="target-card">
+      <div class="tc-val">${Math.round(p.targetCalories)}</div>
+      <div class="tc-lbl">Tomorrow's Target (kcal)</div>
+      <div class="tc-sub ${adjClass}">${adjSign}${Math.round(p.adjustment)} adjustment</div>
+    </div>
+    <div class="target-card">
+      <div class="tc-val" style="color:#1d4ed8;">${Math.round(p.mealPlanTotalCalories)}</div>
+      <div class="tc-lbl">Meal Plan Total (kcal)</div>
+      <div class="tc-sub">P ${Math.round(p.mealPlanTotalProtein)}g &nbsp; C ${Math.round(p.mealPlanTotalCarbs)}g &nbsp; F ${Math.round(p.mealPlanTotalFat)}g</div>
+    </div>
+    <div class="target-card">
+      <div class="tc-val" style="color:#10b981;">${p.fitnessGoal.replace(/_/g,' ')}</div>
+      <div class="tc-lbl">Fitness Goal</div>
+      <div class="tc-sub">${p.activityLevel.replace(/_/g,' ')}</div>
+    </div>
+  </div>`;
+
+  // ── Meal plan section ────────────────────────────────────────────
+  html += `
+  <div class="section-header">
+    <h2>Tomorrow's Meal Plan</h2>
+  </div>
+
+  <div class="meal-grid">
+    ${p.mealPlan.map(m => renderMealCard(m)).join('')}
+  </div>
+
+  <div class="meal-totals macro-doughnut-wrapper">
+    <canvas id="mealMacroPie"></canvas>
+    <div style="display:flex;gap:2rem;flex-wrap:wrap;">
+      <div class="mt-item"><div class="mt-val mt-cal">${Math.round(p.mealPlanTotalCalories)}</div><div class="mt-lbl">Total kcal</div></div>
+      <div class="mt-item"><div class="mt-val mt-p">${Math.round(p.mealPlanTotalProtein)}g</div><div class="mt-lbl">Protein</div></div>
+      <div class="mt-item"><div class="mt-val mt-c">${Math.round(p.mealPlanTotalCarbs)}g</div><div class="mt-lbl">Carbs</div></div>
+      <div class="mt-item"><div class="mt-val mt-f">${Math.round(p.mealPlanTotalFat)}g</div><div class="mt-lbl">Fat</div></div>
+    </div>
+  </div>`;
+
+  // ── Exercise plan section ────────────────────────────────────────
+  html += `
+  <div class="section-header">
+    <h2>Tomorrow's Exercise Plan</h2>
+  </div>
+  ${renderExerciseCard(p.exercisePlan)}`;
+
+  // ── Reminders section ────────────────────────────────────────────
+  html += `
+  <div class="section-header">
+    <h2>Reminders &amp; Tips</h2>
+  </div>
+  <div class="reminders-list">
+    ${p.reminders.map(r => renderReminder(r)).join('')}
+  </div>`;
+
+  document.getElementById('planContent').innerHTML = html;
+
+  // Macro doughnut chart
+  if (macroPieChart) { macroPieChart.destroy(); macroPieChart = null; }
+  const ctx = document.getElementById('mealMacroPie');
+  if (ctx) {
+    macroPieChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Protein', 'Carbs', 'Fat'],
+        datasets: [{
+          data: [
+            Math.round(p.mealPlanTotalProtein * 4),
+            Math.round(p.mealPlanTotalCarbs * 4),
+            Math.round(p.mealPlanTotalFat * 9)
+          ],
+          backgroundColor: ['#3b82f6', '#f59e0b', '#ef4444'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        cutout: '70%',
+        plugins: { legend: { display: false } },
+        responsive: true, maintainAspectRatio: true
+      }
+    });
+  }
+}
+
+function renderMealCard(m) {
+  const typeLabel = m.mealType.replace(/_/g, ' ');
+  return `
+  <div class="meal-card">
+    <span class="meal-type-badge badge-${m.mealType}">${typeLabel}</span>
+    <h3>${m.foodName}</h3>
+    <div class="meal-nepali">${m.nepaliName}</div>
+    <div class="meal-serving">${m.servingSize}</div>
+    <div class="meal-cal">${Math.round(m.calories)} <span>kcal</span></div>
+    <div class="meal-macros">
+      <div class="macro-pill macro-prot"><span class="mp-val">${Math.round(m.proteinGrams)}g</span>Protein</div>
+      <div class="macro-pill macro-carb"><span class="mp-val">${Math.round(m.carbsGrams)}g</span>Carbs</div>
+      <div class="macro-pill macro-fat"><span class="mp-val">${Math.round(m.fatGrams)}g</span>Fat</div>
+    </div>
+    <div class="meal-tip">${m.tip}</div>
+  </div>`;
+}
+
+function renderExerciseCard(ex) {
+  if (!ex) return '';
+  const intensityIcon = { LOW: 'i-LOW', MODERATE: 'i-MODERATE', HIGH: 'i-HIGH' }[ex.intensity] || 'i-MODERATE';
+
+  const muscleGroups = ['CHEST','BACK','LEGS','SHOULDERS','ARMS','CORE','FULL_BODY','GLUTES'];
+  let muscleHtml = '';
+  if (ex.sessionType === 'GYM' && ex.targetMuscleGroup) {
+    muscleHtml = `
+    <div class="muscle-focus">
+      ${muscleGroups.map(g => `
+        <span class="muscle-chip ${g === ex.targetMuscleGroup ? 'active' : ''}">
+          ${g.replace(/_/g,' ')}
+        </span>`).join('')}
+    </div>`;
+  }
+
+  return `
+  <div class="exercise-card">
+    <div class="exercise-header">
+      <div>
+        <h3 style="font-size:1.15rem;font-weight:700;">${ex.sessionTitle}</h3>
+      </div>
+      <span class="session-type-badge badge-${ex.sessionType}">${ex.sessionType.replace(/_/g,' ')}</span>
+    </div>
+    ${muscleHtml}
+    <div class="exercise-meta">
+      <div class="meta-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        ${ex.durationMinutes} min
+      </div>
+      <div class="meta-item">
+        <span class="intensity-dot ${intensityIcon}"></span>
+        ${ex.intensity} Intensity
+      </div>
+      <div class="meta-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+        ~${Math.round(ex.estimatedCaloriesBurn)} kcal burn
+      </div>
+    </div>
+    <ul class="exercise-list">
+      ${ex.exercises.map((e, i) => `
+        <li>
+          <span class="ex-bullet">${i + 1}</span>
+          ${e}
+        </li>`).join('')}
+    </ul>
+    <div class="exercise-notes">${ex.notes}</div>
+  </div>`;
+}
+
+function reminderClass(text) {
+  const t = text.toLowerCase();
+  if (t.startsWith('💧')) return 'water';
+  if (t.startsWith('😴')) return 'sleep';
+  if (t.startsWith('💪')) return 'protein';
+  if (t.startsWith('⚠️')) return 'warning';
+  if (t.startsWith('🩺')) return 'medical';
+  return 'balance';
+}
+
+function renderReminder(text) {
+  return `<div class="reminder-item ${reminderClass(text)}">${text}</div>`;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+document.getElementById('refreshBtn').addEventListener('click', loadPlan);
+
+loadPlan();
+</script>
+</body>
+</html>

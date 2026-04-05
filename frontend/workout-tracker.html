@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitTrack — Workout Tracker</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── Muscle group tabs ───────────────────────────── */
+    .mg-tabs {
+      display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+    }
+    .mg-tab {
+      padding: .42rem 1rem; border-radius: 20px; border: 1px solid var(--border);
+      background: var(--card-bg); color: var(--text-secondary);
+      cursor: pointer; font-size: .82rem; font-weight: 600;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .mg-tab.active {
+      background: var(--primary); color: #fff; border-color: var(--primary);
+    }
+    .mg-tab:hover:not(.active) { background: var(--bg); }
+
+    /* ── Stat cards ──────────────────────────────────── */
+    .stat-row {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: .85rem; margin-bottom: 1.5rem;
+    }
+    .stat-box {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: .9rem 1rem;
+    }
+    .stat-box .sb-val { font-size: 1.55rem; font-weight: 800; }
+    .stat-box .sb-lbl { font-size: .72rem; color: var(--text-secondary); margin-top: .2rem; }
+    .c-blue   .sb-val { color: #2563eb; }
+    .c-green  .sb-val { color: #16a34a; }
+    .c-orange .sb-val { color: #d97706; }
+    .c-gold   .sb-val { color: #b45309; }
+
+    /* ── Two-column layout ───────────────────────────── */
+    .wt-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;
+    }
+    @media(max-width: 800px) { .wt-grid { grid-template-columns: 1fr; } }
+
+    /* ── Section card ────────────────────────────────── */
+    .sec-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.1rem 1.25rem;
+    }
+    .sec-card h3 {
+      font-size: .95rem; font-weight: 700; margin-bottom: 1rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    /* ── Set log item ────────────────────────────────── */
+    .set-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .6rem .8rem; border-radius: 8px; margin-bottom: .45rem;
+      background: var(--bg); border: 1px solid var(--border-light);
+    }
+    .set-item:last-child { margin-bottom: 0; }
+    .set-left { display: flex; align-items: center; gap: .6rem; }
+    .set-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: var(--primary); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .82rem; font-weight: 800; flex-shrink: 0;
+    }
+    .set-name { font-weight: 600; font-size: .88rem; }
+    .set-meta { font-size: .73rem; color: var(--text-secondary); margin-top: .1rem; }
+    .set-right { text-align: right; }
+    .set-weight { font-weight: 700; font-size: .95rem; color: var(--text); }
+    .set-cal { font-size: .72rem; color: var(--text-secondary); }
+
+    /* ── PR badge ────────────────────────────────────── */
+    .pr-badge {
+      display: inline-flex; align-items: center; gap: .2rem;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #fff; font-size: .64rem; font-weight: 800;
+      padding: .15rem .45rem; border-radius: 4px;
+      letter-spacing: .03em; text-transform: uppercase;
+      box-shadow: 0 1px 4px rgba(217,119,6,.35);
+    }
+
+    /* ── Exercise progress card ──────────────────────── */
+    .ex-card {
+      padding: .7rem .85rem; border-radius: 10px; margin-bottom: .5rem;
+      background: var(--bg); border: 1px solid var(--border-light);
+    }
+    .ex-card:last-child { margin-bottom: 0; }
+    .ex-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: .3rem;
+    }
+    .ex-name { font-weight: 700; font-size: .87rem; }
+    .ex-mg { font-size: .7rem; color: var(--text-secondary); margin-top: .1rem; }
+    .ex-stats {
+      display: flex; align-items: center; gap: .75rem; margin-top: .35rem;
+      flex-wrap: wrap;
+    }
+    .ex-best { font-size: .85rem; font-weight: 700; color: var(--text); }
+    .ex-best span { font-size: .72rem; font-weight: 500; color: var(--text-secondary); }
+
+    /* trend indicators */
+    .trend-up   { color: #16a34a; font-weight: 700; font-size: .82rem; }
+    .trend-down { color: #dc2626; font-weight: 700; font-size: .82rem; }
+    .trend-same { color: var(--text-secondary); font-weight: 600; font-size: .82rem; }
+    .trend-new  { color: #2563eb; font-weight: 700; font-size: .82rem; }
+
+    /* ── Empty state ─────────────────────────────────── */
+    .empty {
+      text-align: center; color: var(--text-secondary);
+      font-size: .85rem; padding: 2rem 1rem;
+    }
+
+    /* ── Modal ───────────────────────────────────────── */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:300; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { background:var(--card-bg); border:1px solid var(--border); border-radius:16px; padding:1.5rem; width:min(500px,95vw); max-height:90vh; overflow-y:auto; }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem; }
+    .modal-title { font-size:1.05rem; font-weight:700; }
+    .modal-close { background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.3rem; line-height:1; }
+    .form-group { margin-bottom:.85rem; }
+    .form-group label { display:block; font-size:.8rem; color:var(--text-secondary); margin-bottom:.35rem; font-weight:500; }
+    .form-control { width:100%; padding:.52rem .85rem; background:var(--input-bg,#f9fafb); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:.88rem; box-sizing:border-box; }
+    .form-control:focus { outline:none; border-color:var(--primary); }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+    .form-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:.75rem; }
+    @media(max-width:400px){ .form-row,.form-row-3 { grid-template-columns:1fr; } }
+
+    /* ── PR success flash ────────────────────────────── */
+    .pr-toast {
+      position: fixed; top: 1.2rem; left: 50%; transform: translateX(-50%);
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #fff; font-weight: 700; font-size: .95rem;
+      padding: .65rem 1.5rem; border-radius: 100px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.25);
+      z-index: 999; display: none; animation: slideDown .3s ease;
+    }
+    @keyframes slideDown { from { opacity:0; transform:translateX(-50%) translateY(-12px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+
+    /* ── Mini history chart ──────────────────────────── */
+    .mini-chart-wrap { height: 44px; margin-top: .4rem; }
+
+    /* ── Section header ──────────────────────────────── */
+    .sec-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:.5rem; }
+    .sec-hd h1 { font-size:1.45rem; font-weight:800; }
+
+    /* ── Badge colors for muscle group ──────────────── */
+    .mg-badge {
+      display: inline-block; font-size: .65rem; font-weight: 700;
+      padding: .12rem .45rem; border-radius: 4px;
+      text-transform: uppercase; letter-spacing: .03em;
+    }
+    .mg-CHEST     { background:#fce7f3; color:#9d174d; }
+    .mg-BACK      { background:#dbeafe; color:#1e40af; }
+    .mg-LEGS      { background:#dcfce7; color:#15803d; }
+    .mg-SHOULDERS { background:#fef3c7; color:#92400e; }
+    .mg-ARMS      { background:#ede9fe; color:#5b21b6; }
+    .mg-CORE      { background:#fff7ed; color:#c2410c; }
+    .mg-FULL_BODY { background:#f1f5f9; color:#334155; }
+    .mg-GLUTES    { background:#fdf4ff; color:#7e22ce; }
+    .mg-CARDIO    { background:#ecfdf5; color:#065f46; }
+
+    /* ── Loading ─────────────────────────────────────── */
+    .spinner-sm { display:inline-block; width:16px; height:16px; border:2px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:spin .6s linear infinite; vertical-align:middle; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── Alert ───────────────────────────────────────── */
+    .alert { padding:.7rem 1rem; border-radius:8px; margin-bottom:.85rem; font-size:.84rem; font-weight:500; border:1px solid; }
+    .alert-error { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+    .alert-success { background:#dcfce7; color:#15803d; border-color:#86efac; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebarContainer"></div>
+
+  <main class="main-content">
+    <div class="container" style="padding:1.5rem 1.5rem 2.5rem;">
+
+      <!-- Header -->
+      <div class="sec-hd" style="margin-top:0;">
+        <h1>Workout Tracker</h1>
+        <button class="btn btn-primary btn-sm" onclick="openLogModal()">+ Log Set</button>
+      </div>
+
+      <!-- Stats row -->
+      <div class="stat-row">
+        <div class="stat-box c-blue"><div class="sb-val" id="stat-today">—</div><div class="sb-lbl">Sets Today</div></div>
+        <div class="stat-box c-green"><div class="sb-val" id="stat-volume">—</div><div class="sb-lbl">Volume Today (kg)</div></div>
+        <div class="stat-box c-gold"><div class="sb-val" id="stat-prs">—</div><div class="sb-lbl">PRs Today</div></div>
+        <div class="stat-box c-orange"><div class="sb-val" id="stat-exercises">—</div><div class="sb-lbl">Exercises Tracked</div></div>
+      </div>
+
+      <!-- Muscle group filter -->
+      <div class="mg-tabs" id="mgTabs">
+        <button class="mg-tab active" data-group="ALL" onclick="filterGroup(this,'ALL')">All</button>
+        <button class="mg-tab" data-group="CHEST"     onclick="filterGroup(this,'CHEST')">Chest</button>
+        <button class="mg-tab" data-group="BACK"      onclick="filterGroup(this,'BACK')">Back</button>
+        <button class="mg-tab" data-group="LEGS"      onclick="filterGroup(this,'LEGS')">Legs</button>
+        <button class="mg-tab" data-group="SHOULDERS" onclick="filterGroup(this,'SHOULDERS')">Shoulders</button>
+        <button class="mg-tab" data-group="ARMS"      onclick="filterGroup(this,'ARMS')">Arms</button>
+        <button class="mg-tab" data-group="CORE"      onclick="filterGroup(this,'CORE')">Core</button>
+        <button class="mg-tab" data-group="FULL_BODY" onclick="filterGroup(this,'FULL_BODY')">Full Body</button>
+        <button class="mg-tab" data-group="GLUTES"    onclick="filterGroup(this,'GLUTES')">Glutes</button>
+      </div>
+
+      <div id="alertBox"></div>
+
+      <!-- Main grid -->
+      <div class="wt-grid">
+        <!-- Left: Today's sets -->
+        <div class="sec-card">
+          <h3>
+            Today's Logged Sets
+            <span id="todayCount" style="font-size:.75rem;color:var(--text-secondary);font-weight:500;"></span>
+          </h3>
+          <div id="todayList"><div class="empty"><span class="spinner-sm"></span></div></div>
+        </div>
+
+        <!-- Right: Exercise Progress -->
+        <div class="sec-card">
+          <h3>
+            Exercise Progress
+            <span style="font-size:.72rem;color:var(--text-secondary);font-weight:400;">Personal Bests &amp; Overload</span>
+          </h3>
+          <div id="progressList"><div class="empty"><span class="spinner-sm"></span></div></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- PR Toast -->
+<div class="pr-toast" id="prToast">🏆 New Personal Record!</div>
+
+<!-- Log Set Modal -->
+<div class="modal-overlay" id="logModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Log Workout Set</span>
+      <button class="modal-close" onclick="closeLogModal()">&#215;</button>
+    </div>
+    <div id="modalAlert"></div>
+    <form id="logForm" onsubmit="submitLog(event)">
+      <div class="form-group">
+        <label>Muscle Group</label>
+        <select class="form-control" id="muscleGroup" onchange="updateExerciseList()" required>
+          <option value="">Select muscle group</option>
+          <option value="CHEST">Chest</option>
+          <option value="BACK">Back</option>
+          <option value="LEGS">Legs</option>
+          <option value="SHOULDERS">Shoulders</option>
+          <option value="ARMS">Arms</option>
+          <option value="CORE">Core</option>
+          <option value="FULL_BODY">Full Body</option>
+          <option value="GLUTES">Glutes</option>
+          <option value="CARDIO">Cardio</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Exercise Name</label>
+        <input list="exerciseOptions" class="form-control" id="exerciseName" placeholder="e.g. Bench Press" required />
+        <datalist id="exerciseOptions"></datalist>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>Sets</label>
+          <input type="number" class="form-control" id="sets" min="1" max="20" value="3" required />
+        </div>
+        <div class="form-group">
+          <label>Reps</label>
+          <input type="number" class="form-control" id="reps" min="1" max="100" value="10" required />
+        </div>
+        <div class="form-group">
+          <label>Weight (kg)</label>
+          <input type="number" class="form-control" id="weightKg" min="0" step="0.5" value="0" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Calories Burned <span style="color:var(--text-secondary);font-weight:400;">(optional)</span></label>
+        <input type="number" class="form-control" id="caloriesBurned" min="0" step="1" placeholder="Leave blank to skip" />
+      </div>
+      <button type="submit" class="btn btn-primary btn-full" id="logBtn">Log Set</button>
+    </form>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/api.js"></script>
+<script src="js/sidebar.js"></script>
+<script>
+requireAuth();
+document.getElementById('sidebarContainer').innerHTML = renderSidebar();
+initSidebar();
+
+/* ── Exercise presets by muscle group ─────────────── */
+const EXERCISE_PRESETS = {
+  CHEST:     ['Bench Press','Incline Bench Press','Decline Bench Press','Cable Fly','Chest Dip','Push Up','Pec Deck','Dumbbell Fly'],
+  BACK:      ['Deadlift','Pull Up','Bent Over Row','Lat Pulldown','Seated Row','T-Bar Row','Single Arm Row','Face Pull'],
+  LEGS:      ['Squat','Leg Press','Romanian Deadlift','Leg Curl','Leg Extension','Calf Raise','Lunges','Hip Thrust','Bulgarian Split Squat'],
+  SHOULDERS: ['Overhead Press','Lateral Raise','Front Raise','Arnold Press','Shrug','Upright Row','Rear Delt Fly'],
+  ARMS:      ['Bicep Curl','Tricep Pushdown','Hammer Curl','Skull Crusher','Preacher Curl','Tricep Dip','Concentration Curl','Cable Curl'],
+  CORE:      ['Plank','Crunches','Russian Twist','Leg Raise','Ab Wheel','Cable Crunch','Hanging Leg Raise','Mountain Climber'],
+  FULL_BODY: ['Burpees','Clean and Jerk','Thruster','Kettlebell Swing','Power Clean','Turkish Get Up'],
+  GLUTES:    ['Hip Thrust','Glute Bridge','Cable Kickback','Bulgarian Split Squat','Sumo Squat','Donkey Kick'],
+  CARDIO:    [],
+};
+
+const MG_ICONS = {
+  CHEST:'💪', BACK:'🔙', LEGS:'🦵', SHOULDERS:'🏋️',
+  ARMS:'💪', CORE:'🔥', FULL_BODY:'⚡', GLUTES:'🍑', CARDIO:'❤️',
+};
+
+/* ── State ────────────────────────────────────────── */
+let allTodaySets = [];
+let allProgress  = [];
+let activeGroup  = 'ALL';
+
+/* ── Load data ───────────────────────────────────── */
+async function loadAll() {
+  try {
+    const [sets, progress] = await Promise.all([
+      api.getTodaySets(),
+      api.getExerciseProgress(),
+    ]);
+    allTodaySets = sets || [];
+    allProgress  = progress || [];
+    updateStats();
+    renderToday();
+    renderProgress();
+  } catch (e) {
+    document.getElementById('todayList').innerHTML = `<div class="empty">Failed to load data.</div>`;
+  }
+}
+
+/* ── Stats ───────────────────────────────────────── */
+function updateStats() {
+  const todaySets = filterSets(allTodaySets);
+  const prCount   = allTodaySets.filter(s => s.PR).length;
+  const volume    = allTodaySets.reduce((sum, s) => sum + (s.weightKg || 0) * (s.sets || 1) * (s.reps || 1), 0);
+  document.getElementById('stat-today').textContent     = allTodaySets.length;
+  document.getElementById('stat-volume').textContent    = volume > 0 ? Math.round(volume) : 0;
+  document.getElementById('stat-prs').textContent       = prCount;
+  document.getElementById('stat-exercises').textContent = allProgress.length;
+}
+
+/* ── Filtering ───────────────────────────────────── */
+function filterSets(sets) {
+  if (activeGroup === 'ALL') return sets;
+  return sets.filter(s => s.muscleGroup === activeGroup);
+}
+
+function filterProgress(progress) {
+  if (activeGroup === 'ALL') return progress;
+  return progress.filter(p => p.muscleGroup === activeGroup);
+}
+
+function filterGroup(btn, group) {
+  document.querySelectorAll('.mg-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeGroup = group;
+  renderToday();
+  renderProgress();
+}
+
+/* ── Render today's sets ─────────────────────────── */
+function renderToday() {
+  const sets = filterSets(allTodaySets);
+  const container = document.getElementById('todayList');
+  document.getElementById('todayCount').textContent = sets.length ? `${sets.length} set${sets.length>1?'s':''}` : '';
+
+  if (!sets.length) {
+    container.innerHTML = `<div class="empty">No sets logged today${activeGroup!=='ALL'?' for this group':''}.<br><a href="#" onclick="openLogModal();return false;">Log your first set</a></div>`;
+    return;
+  }
+
+  container.innerHTML = sets.map(s => {
+    const weight = s.weightKg > 0 ? `${s.weightKg} kg` : 'Bodyweight';
+    const pr     = s.PR ? `<span class="pr-badge">⭐ PR</span>` : '';
+    const mg     = s.muscleGroup ? `<span class="mg-badge mg-${s.muscleGroup}">${s.muscleGroup.replace('_',' ')}</span>` : '';
+    const cal    = s.caloriesBurned ? `${Math.round(s.caloriesBurned)} kcal` : '';
+    const time   = s.loggedAt ? new Date(s.loggedAt).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) : '';
+    const icon   = (MG_ICONS[s.muscleGroup] || '🏋️');
+    return `
+      <div class="set-item">
+        <div class="set-left">
+          <div class="set-icon">${icon}</div>
+          <div>
+            <div class="set-name">${escHtml(s.exerciseName)} ${pr}</div>
+            <div class="set-meta">${s.sets}×${s.reps} &nbsp;·&nbsp; ${mg} &nbsp;·&nbsp; ${time}</div>
+          </div>
+        </div>
+        <div class="set-right">
+          <div class="set-weight">${weight}</div>
+          <div class="set-cal">${cal}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ── Render exercise progress ────────────────────── */
+function renderProgress() {
+  const list = filterProgress(allProgress);
+  const container = document.getElementById('progressList');
+
+  if (!list.length) {
+    container.innerHTML = `<div class="empty">No exercise data yet${activeGroup!=='ALL'?' for this group':''}.<br>Log a set to track your progress.</div>`;
+    return;
+  }
+
+  container.innerHTML = list.map(p => {
+    const trendHtml = buildTrend(p);
+    const bestText  = p.currentBestKg > 0 ? `${p.currentBestKg} kg` : 'Bodyweight';
+    const mg        = p.muscleGroup ? `<span class="mg-badge mg-${p.muscleGroup}">${p.muscleGroup.replace('_',' ')}</span>` : '';
+    const sessions  = `${p.totalSessions} session${p.totalSessions!==1?'s':''}`;
+    const lastDate  = p.lastLoggedAt ? formatDate(p.lastLoggedAt) : '';
+    const miniChart = buildMiniChart(p.recentSets || []);
+    return `
+      <div class="ex-card">
+        <div class="ex-header">
+          <div>
+            <div class="ex-name">${escHtml(p.exerciseName)}</div>
+            <div class="ex-mg">${mg} &nbsp; ${sessions} &nbsp;·&nbsp; ${lastDate}</div>
+          </div>
+          ${trendHtml}
+        </div>
+        <div class="ex-stats">
+          <div class="ex-best">${bestText} <span>best</span></div>
+          ${p.previousBestKg > 0 ? `<div style="font-size:.75rem;color:var(--text-secondary);">Prev: ${p.previousBestKg} kg</div>` : ''}
+        </div>
+        ${miniChart}
+      </div>`;
+  }).join('');
+}
+
+function buildTrend(p) {
+  switch(p.trend) {
+    case 'NEW':
+      return `<div class="trend-new">★ NEW</div>`;
+    case 'UP': {
+      const imp = p.improvementKg > 0 ? `+${p.improvementKg} kg` : '';
+      const pct = p.improvementPct  ? ` (${p.improvementPct}%)` : '';
+      return `<div class="trend-up">▲ ${imp}${pct}</div>`;
+    }
+    case 'DOWN': {
+      const drop = p.improvementKg ? `${p.improvementKg} kg` : '';
+      return `<div class="trend-down">▼ ${drop}</div>`;
+    }
+    case 'SAME':
+      return `<div class="trend-same">= Same</div>`;
+    default:
+      return '';
+  }
+}
+
+/* ── Mini weight-trend chart ─────────────────────── */
+const miniCharts = {};
+let chartCounter = 0;
+
+function buildMiniChart(recentSets) {
+  if (recentSets.length < 2) return '';
+  const id = `mc-${chartCounter++}`;
+  const weights = recentSets.map(s => s.weightKg || 0);
+  const labels  = recentSets.map(s => s.loggedAt ? new Date(s.loggedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '');
+
+  // Defer chart rendering until element is in DOM
+  setTimeout(() => {
+    const canvas = document.getElementById(id);
+    if (!canvas) return;
+    if (miniCharts[id]) miniCharts[id].destroy();
+    miniCharts[id] = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data: weights,
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37,99,235,.08)',
+          borderWidth: 1.5,
+          pointRadius: 2,
+          fill: true,
+          tension: 0.3,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: { x: { display: false }, y: { display: false } },
+        animation: false,
+      }
+    });
+  }, 50);
+
+  return `<div class="mini-chart-wrap"><canvas id="${id}" height="44"></canvas></div>`;
+}
+
+/* ── Log set modal ───────────────────────────────── */
+function openLogModal() {
+  document.getElementById('logModal').classList.add('open');
+  document.getElementById('modalAlert').innerHTML = '';
+}
+function closeLogModal() {
+  document.getElementById('logModal').classList.remove('open');
+  document.getElementById('logForm').reset();
+  document.getElementById('exerciseOptions').innerHTML = '';
+}
+
+function updateExerciseList() {
+  const group = document.getElementById('muscleGroup').value;
+  const presets = EXERCISE_PRESETS[group] || [];
+  document.getElementById('exerciseOptions').innerHTML =
+    presets.map(e => `<option value="${e}">`).join('');
+}
+
+async function submitLog(e) {
+  e.preventDefault();
+  const btn = document.getElementById('logBtn');
+  setLoading(btn, true);
+  document.getElementById('modalAlert').innerHTML = '';
+
+  const payload = {
+    userId:         localStorage.getItem('userId'),
+    exerciseName:   document.getElementById('exerciseName').value.trim(),
+    muscleGroup:    document.getElementById('muscleGroup').value,
+    sets:           parseInt(document.getElementById('sets').value),
+    reps:           parseInt(document.getElementById('reps').value),
+    weightKg:       parseFloat(document.getElementById('weightKg').value) || 0,
+    caloriesBurned: parseFloat(document.getElementById('caloriesBurned').value) || null,
+  };
+
+  try {
+    const result = await api.logSet(payload);
+    setLoading(btn, false);
+
+    if (result.PR) showPRToast();
+
+    // Refresh data
+    closeLogModal();
+    await loadAll();
+  } catch (err) {
+    setLoading(btn, false);
+    document.getElementById('modalAlert').innerHTML =
+      `<div class="alert alert-error">${err.message}</div>`;
+  }
+}
+
+/* ── PR toast ────────────────────────────────────── */
+function showPRToast() {
+  const t = document.getElementById('prToast');
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 3000);
+}
+
+/* ── Helper ──────────────────────────────────────── */
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ── Init ────────────────────────────────────────── */
+loadAll();
+</script>
+</body>
+</html>
