@@ -4,6 +4,7 @@ import com.project.fitness.dto.DailyRecommendationResponse;
 import com.project.fitness.dto.MealSuggestion;
 import com.project.fitness.model.*;
 import com.project.fitness.repository.CardioSessionRepository;
+import com.project.fitness.repository.FoodEntryRepository;
 import com.project.fitness.repository.UserProfileRepository;
 import com.project.fitness.repository.WorkoutSetRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class DailyRecommendationService {
     private final WorkoutSetRepository    workoutSetRepository;
     private final CardioSessionRepository cardioSessionRepository;
     private final UserProfileRepository   userProfileRepository;
+    private final FoodEntryRepository     foodEntryRepository;
 
     public DailyRecommendationResponse generate(String userId) {
         log.info("[DailyRec] Generating for userId={}", userId);
@@ -41,10 +43,11 @@ public class DailyRecommendationService {
 
         List<WorkoutSet>    todaySets   = workoutSetRepository.findByUserIdAndDateRange(userId, todayStart, todayEnd);
         List<CardioSession> todayCardio = cardioSessionRepository.findByUserIdAndDateRange(userId, todayStart, todayEnd);
+        List<FoodEntry>     todayFood   = foodEntryRepository.findByUserIdAndDateRange(userId, todayStart, todayEnd);
         Optional<UserProfile> profileOpt = userProfileRepository.findByUserId(userId);
 
-        log.info("[DailyRec] userId={} | gymSets={} | cardioSessions={} | profilePresent={}",
-                userId, todaySets.size(), todayCardio.size(), profileOpt.isPresent());
+        log.info("[DailyRec] userId={} | gymSets={} | cardioSessions={} | foodEntries={} | profilePresent={}",
+                userId, todaySets.size(), todayCardio.size(), todayFood.size(), profileOpt.isPresent());
 
         int     consecutiveGymDays = countConsecutiveGymDays(userId);
         boolean isRestDay          = consecutiveGymDays >= 3;
@@ -56,7 +59,16 @@ public class DailyRecommendationService {
                 + todayCardio.stream()
                 .mapToDouble(c -> c.getCaloriesBurned() != null ? c.getCaloriesBurned() : 0.0).sum();
 
-        FitnessGoal goal = profileOpt.map(UserProfile::getFitnessGoal).orElse(FitnessGoal.MAINTENANCE);
+        double calsConsumed = todayFood.stream()
+                .mapToDouble(f -> f.getCalories() != null ? f.getCalories() : 0.0).sum();
+        double proteinConsumed = todayFood.stream()
+                .mapToDouble(f -> f.getProtein() != null ? f.getProtein() : 0.0).sum();
+        int cardioMinutes = todayCardio.stream()
+                .mapToInt(c -> c.getDurationMinutes() != null ? c.getDurationMinutes() : 0).sum();
+
+        FitnessGoal goal        = profileOpt.map(UserProfile::getFitnessGoal).orElse(FitnessGoal.MAINTENANCE);
+        int         calorieGoal = profileOpt.map(UserProfile::getDailyCalorieTarget).filter(v -> v != null && v > 0).orElse(0);
+        int         proteinGoal = profileOpt.map(UserProfile::getDailyProteinTarget).filter(v -> v != null && v > 0).orElse(0);
 
         DailyRecommendationResponse resp = new DailyRecommendationResponse();
         resp.setRestDayRecommended(isRestDay);
@@ -64,6 +76,17 @@ public class DailyRecommendationService {
         resp.setGymSetsToday(todaySets.size());
         resp.setCardioSessionsToday(todayCardio.size());
         resp.setTotalCaloriesToday(Math.round(calsBurned * 10.0) / 10.0);
+        resp.setCaloriesConsumed(Math.round(calsConsumed * 10.0) / 10.0);
+        resp.setProteinConsumedG(Math.round(proteinConsumed * 10.0) / 10.0);
+        resp.setCalorieGoal(calorieGoal);
+        resp.setProteinGoalG(proteinGoal);
+        resp.setTotalCardioMinutes(cardioMinutes);
+
+        // ── Build Today's Analysis points ─────────────────
+        resp.setAnalysisPoints(buildAnalysisPoints(
+                todayFood, todaySets, todayCardio,
+                calsConsumed, proteinConsumed, calsBurned,
+                calorieGoal, proteinGoal, cardioMinutes));
 
         // ── Exercise plan for tomorrow ────────────────────
         if (isRestDay) {
@@ -95,6 +118,69 @@ public class DailyRecommendationService {
         log.info("[DailyRec] userId={} | restDay={} | consecutiveDays={} | plan=\"{}\"",
                 userId, isRestDay, consecutiveGymDays, resp.getExercisePlan());
         return resp;
+    }
+
+    // ── Today's Analysis builder ──────────────────────────
+    private List<String> buildAnalysisPoints(
+            List<FoodEntry> food, List<WorkoutSet> sets, List<CardioSession> cardio,
+            double calsConsumed, double proteinConsumed, double calsBurned,
+            int calorieGoal, int proteinGoal, int cardioMinutes) {
+
+        List<String> points = new ArrayList<>();
+
+        // Nutrition
+        if (food.isEmpty()) {
+            points.add("No food logged today — make sure to track your meals for accurate analysis.");
+        } else {
+            if (calorieGoal > 0) {
+                int pct = (int) Math.round(calsConsumed * 100.0 / calorieGoal);
+                String status = pct < 85 ? "under target" : pct > 115 ? "over target" : "on track";
+                points.add(String.format("Calories: %.0f kcal consumed of your %d kcal goal (%d%% — %s).",
+                        calsConsumed, calorieGoal, pct, status));
+            } else {
+                points.add(String.format("Calories: %.0f kcal consumed today across %d food entries.",
+                        calsConsumed, food.size()));
+            }
+
+            if (proteinGoal > 0) {
+                String pStatus = proteinConsumed < proteinGoal * 0.8 ? "below target — try to add a protein-rich meal"
+                        : proteinConsumed > proteinGoal * 1.2 ? "above target"
+                        : "on track";
+                points.add(String.format("Protein: %.0fg consumed of your %dg target (%s).",
+                        proteinConsumed, proteinGoal, pStatus));
+            } else {
+                points.add(String.format("Protein: %.0fg consumed today.", proteinConsumed));
+            }
+        }
+
+        // Gym
+        if (sets.isEmpty()) {
+            points.add("No gym session logged today.");
+        } else {
+            int totalSets = sets.stream().mapToInt(s -> s.getSets() != null ? s.getSets() : 1).sum();
+            long exercises = sets.stream().map(WorkoutSet::getExerciseName).distinct().count();
+            points.add(String.format("Gym: %d sets across %d exercise(s) logged — %.0f kcal burned.",
+                    totalSets, exercises, calsBurned > 0 ? calsBurned : 0.0));
+        }
+
+        // Cardio
+        if (cardio.isEmpty()) {
+            points.add("No cardio logged today.");
+        } else {
+            double cardioCals = cardio.stream()
+                    .mapToDouble(c -> c.getCaloriesBurned() != null ? c.getCaloriesBurned() : 0.0).sum();
+            points.add(String.format("Cardio: %d session(s), %d minutes total — %.0f kcal burned.",
+                    cardio.size(), cardioMinutes, cardioCals));
+        }
+
+        // Net balance if enough data
+        if (!food.isEmpty() && calorieGoal > 0 && calsBurned > 0) {
+            double net = calsConsumed - calsBurned;
+            points.add(String.format("Net intake after exercise: %.0f kcal (consumed %.0f − burned %.0f).",
+                    net, calsConsumed, calsBurned));
+        }
+
+        return points;
     }
 
     // ── Consecutive gym-day counter ───────────────────────

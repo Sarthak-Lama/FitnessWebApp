@@ -76,6 +76,34 @@
       border-top: 1px solid var(--border); padding-top: .45rem; margin-top: .45rem;
     }
 
+    /* ── Analysis section ───────────────────────────── */
+    .analysis-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.25rem 1.4rem;
+      margin-bottom: 1rem;
+    }
+    .analysis-card-title {
+      font-size: 1rem; font-weight: 700; margin-bottom: 1rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .analysis-stats {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr));
+      gap: .6rem; margin-bottom: 1rem;
+    }
+    .stat-chip {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: .7rem .9rem; text-align: center;
+    }
+    .stat-chip .sv { font-size: 1.35rem; font-weight: 800; color: var(--text); }
+    .stat-chip .sl { font-size: .7rem; color: var(--text-muted); margin-top: .1rem; }
+    .analysis-points { list-style: none; padding: 0; margin: 0; }
+    .analysis-points li {
+      font-size: .85rem; color: var(--text-muted); line-height: 1.6;
+      padding: .35rem 0; border-bottom: 1px solid var(--border);
+    }
+    .analysis-points li:last-child { border-bottom: none; }
+    .analysis-points li::before { content: "•"; color: var(--primary); margin-right: .5rem; font-weight: 700; }
+
     /* ── Empty / loading ─────────────────────────────── */
     .empty-state {
       text-align: center; padding: 3.5rem 1rem;
@@ -108,7 +136,7 @@
         <div>
           <h1>Recommendations</h1>
           <p style="font-size:.875rem;color:var(--text-muted);margin-top:.2rem;">
-            Tomorrow's personalised exercise and meal plan.
+            Today's personalised summary and tomorrow's exercise &amp; meal plan.
           </p>
         </div>
         <div style="display:flex;gap:.5rem;">
@@ -201,14 +229,52 @@ function renderDailyPlan(rec) {
     <div class="empty-state">
       <div class="empty-icon">📅</div>
       <h3>No daily plan yet</h3>
-      <p>Click <strong>Generate Recommendation</strong> to create tomorrow's personalised exercise and meal plan.</p>
+      <p>Click <strong>Generate Recommendation</strong> to create today's analysis and tomorrow's personalised plan.</p>
       <button class="btn btn-primary btn-sm" onclick="generateRec()">Generate Recommendation</button>
     </div>`;
 
-  let html = `<div class="daily-card">
+  let html = '';
+
+  // ── Section 1: Today's Analysis ──────────────────────
+  html += `<div class="analysis-card">
+    <div class="analysis-card-title">
+      Today's Analysis
+      <span style="font-size:.72rem;color:var(--text-muted);font-weight:400;">Based on today's food &amp; activity logs</span>
+    </div>`;
+
+  html += `<div class="analysis-stats">`;
+  if (rec.calorieGoal > 0) {
+    const pct = rec.caloriesConsumed > 0 ? Math.round(rec.caloriesConsumed * 100 / rec.calorieGoal) : 0;
+    html += `<div class="stat-chip"><div class="sv">${Math.round(rec.caloriesConsumed ?? 0)}</div><div class="sl">kcal eaten (${pct}% of ${rec.calorieGoal} goal)</div></div>`;
+  } else {
+    html += `<div class="stat-chip"><div class="sv">${Math.round(rec.caloriesConsumed ?? 0)}</div><div class="sl">kcal eaten today</div></div>`;
+  }
+  if (rec.proteinGoalG > 0) {
+    html += `<div class="stat-chip"><div class="sv">${Math.round(rec.proteinConsumedG ?? 0)}g</div><div class="sl">protein (goal ${rec.proteinGoalG}g)</div></div>`;
+  } else {
+    html += `<div class="stat-chip"><div class="sv">${Math.round(rec.proteinConsumedG ?? 0)}g</div><div class="sl">protein eaten</div></div>`;
+  }
+  html += `<div class="stat-chip"><div class="sv">${rec.gymSetsToday ?? 0}</div><div class="sl">gym sets logged</div></div>`;
+  if (rec.totalCardioMinutes > 0) {
+    html += `<div class="stat-chip"><div class="sv">${rec.totalCardioMinutes}</div><div class="sl">cardio minutes</div></div>`;
+  } else {
+    html += `<div class="stat-chip"><div class="sv">${rec.cardioSessionsToday ?? 0}</div><div class="sl">cardio sessions</div></div>`;
+  }
+  html += `</div>`;
+
+  if (rec.analysisPoints && rec.analysisPoints.length) {
+    html += `<ul class="analysis-points">`;
+    html += rec.analysisPoints.map(p => `<li>${escHtml(p)}</li>`).join('');
+    html += `</ul>`;
+  }
+
+  html += `</div>`;
+
+  // ── Section 2: Tomorrow's Plan ────────────────────────
+  html += `<div class="daily-card">
     <div class="daily-card-title">
       Tomorrow's Plan
-      <span style="font-size:.72rem;color:var(--text-secondary);font-weight:400;">Based on today's gym &amp; cardio logs</span>
+      <span style="font-size:.72rem;color:var(--text-muted);font-weight:400;">Based on today's gym &amp; cardio logs</span>
     </div>`;
 
   if (rec.restDayRecommended) {

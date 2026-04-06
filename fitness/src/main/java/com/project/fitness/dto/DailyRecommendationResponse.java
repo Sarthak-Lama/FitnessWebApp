@@ -19,8 +19,16 @@ public class DailyRecommendationResponse {
     // ── Tomorrow's meal suggestions ───────────────────
     private List<MealSuggestion> mealSuggestions;
 
-    // ── Today's summary (used on the frontend) ────────
+    // ── Today's workout summary ───────────────────────
     private int    gymSetsToday;
     private int    cardioSessionsToday;
-    private double totalCaloriesToday;
+    private double totalCaloriesToday;   // calories burned from exercise
+
+    // ── Today's Analysis (food + activity) ───────────
+    private List<String> analysisPoints;   // bullet-point insights
+    private double caloriesConsumed;       // kcal eaten today
+    private double proteinConsumedG;       // protein eaten today (g)
+    private int    calorieGoal;            // from user profile (0 = unknown)
+    private int    proteinGoalG;           // from user profile (0 = unknown)
+    private int    totalCardioMinutes;     // sum of cardio session durations today
 }
