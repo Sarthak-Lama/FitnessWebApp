@@ -524,7 +524,7 @@ async function submitLog(e) {
   document.getElementById('modalAlert').innerHTML = '';
 
   const payload = {
-    userId:         localStorage.getItem('userId'),
+    userId:         localStorage.getItem('userId') || '',
     exerciseName:   document.getElementById('exerciseName').value.trim(),
     muscleGroup:    document.getElementById('muscleGroup').value,
     sets:           parseInt(document.getElementById('sets').value),

@@ -48,7 +48,7 @@ const api = {
   generateRecommendation: (data) => api._request('POST', '/recommendation/generate', data),
   getActivityRecommendations: (activityId) => api._request('GET', `/recommendation/activity/${activityId}`),
   getUserRecommendations: () => {
-    const userId = localStorage.getItem('userId');
+    const userId = localStorage.getItem('userId') || '';
     return api._request('GET', `/recommendation/user/${userId}`);
   },
   getDailyRecommendation: () => api._request('GET', '/recommendation/daily'),

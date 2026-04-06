@@ -173,8 +173,7 @@
     const btn = document.getElementById('saveProfileBtn');
     setLoading(btn, true);
     try {
-      const userId = localStorage.getItem('userId');
-      const body = { userId };
+      const body = { userId: localStorage.getItem('userId') || '' };
       const w = document.getElementById('weightKg').value;
       const h = document.getElementById('heightCm').value;
       const tw = document.getElementById('targetWeightKg').value;

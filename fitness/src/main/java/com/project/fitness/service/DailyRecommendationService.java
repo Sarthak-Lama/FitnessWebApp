@@ -7,6 +7,7 @@ import com.project.fitness.repository.CardioSessionRepository;
 import com.project.fitness.repository.UserProfileRepository;
 import com.project.fitness.repository.WorkoutSetRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
  *
  * No dependency on the generic Activity table.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DailyRecommendationService {
@@ -32,6 +34,7 @@ public class DailyRecommendationService {
     private final UserProfileRepository   userProfileRepository;
 
     public DailyRecommendationResponse generate(String userId) {
+        log.info("[DailyRec] Generating for userId={}", userId);
 
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
         LocalDateTime todayEnd   = todayStart.plusDays(1);
@@ -39,6 +42,9 @@ public class DailyRecommendationService {
         List<WorkoutSet>    todaySets   = workoutSetRepository.findByUserIdAndDateRange(userId, todayStart, todayEnd);
         List<CardioSession> todayCardio = cardioSessionRepository.findByUserIdAndDateRange(userId, todayStart, todayEnd);
         Optional<UserProfile> profileOpt = userProfileRepository.findByUserId(userId);
+
+        log.info("[DailyRec] userId={} | gymSets={} | cardioSessions={} | profilePresent={}",
+                userId, todaySets.size(), todayCardio.size(), profileOpt.isPresent());
 
         int     consecutiveGymDays = countConsecutiveGymDays(userId);
         boolean isRestDay          = consecutiveGymDays >= 3;
@@ -86,6 +92,8 @@ public class DailyRecommendationService {
 
         // ── Meal suggestions for tomorrow ─────────────────
         resp.setMealSuggestions(buildMeals(goal, isRestDay, hadGymToday));
+        log.info("[DailyRec] userId={} | restDay={} | consecutiveDays={} | plan=\"{}\"",
+                userId, isRestDay, consecutiveGymDays, resp.getExercisePlan());
         return resp;
     }
 
@@ -93,6 +101,7 @@ public class DailyRecommendationService {
     private int countConsecutiveGymDays(String userId) {
         List<WorkoutSet> all = workoutSetRepository.findByUserIdOrderByLoggedAtDesc(userId);
         Set<LocalDate> gymDates = all.stream()
+                .filter(w -> w.getLoggedAt() != null)          // guard: loggedAt is nullable in schema
                 .map(w -> w.getLoggedAt().toLocalDate())
                 .collect(Collectors.toSet());
 

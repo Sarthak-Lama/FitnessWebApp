@@ -5,6 +5,89 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FitTrack — Recommendations</title>
   <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .sec-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.5rem; }
+    .sec-hd h1 { font-size:1.45rem; font-weight:800; }
+
+    .daily-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.25rem 1.4rem;
+    }
+    .daily-card-title {
+      font-size: 1rem; font-weight: 700; margin-bottom: 1rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .rest-banner {
+      background: #f5f3ff; border: 1px solid #ddd6fe;
+      border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: 1rem;
+    }
+    .rest-banner strong { color: #6d28d9; }
+    .rest-banner p { font-size: .875rem; color: var(--text-muted); margin-top: .3rem; line-height: 1.55; }
+
+    .ex-plan {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: .85rem 1rem; margin-bottom: 1rem;
+    }
+    .ex-plan-title { font-weight: 700; font-size: .9rem; margin-bottom: .35rem; }
+    .ex-plan-detail { font-size: .85rem; color: var(--text-muted); line-height: 1.55; }
+
+    .meal-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: .85rem; margin-bottom: 1rem;
+    }
+    .meal-card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: .85rem 1rem;
+    }
+    .meal-type {
+      font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; margin-bottom: .4rem;
+    }
+    .meal-BREAKFAST { color: #92400e; }
+    .meal-LUNCH     { color: #1d4ed8; }
+    .meal-DINNER    { color: #991b1b; }
+    .meal-SNACK     { color: #15803d; }
+
+    .meal-name { font-weight: 700; font-size: .88rem; margin-bottom: .4rem; }
+    .meal-cal  { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+    .meal-cal span { font-size: .72rem; font-weight: 400; color: var(--text-muted); }
+
+    .meal-macros { display: flex; gap: .35rem; margin: .5rem 0; }
+    .macro-pill {
+      flex: 1; text-align: center; padding: .25rem .2rem;
+      border-radius: 4px; font-size: .7rem;
+    }
+    .macro-pill .mp-val { font-weight: 700; display: block; font-size: .82rem; }
+    .mp-p { background: #dbeafe; color: #1e40af; }
+    .mp-c { background: #fef3c7; color: #92400e; }
+    .mp-f { background: #fee2e2; color: #991b1b; }
+
+    .meal-tip {
+      font-size: .75rem; color: var(--text-muted); line-height: 1.5;
+      border-top: 1px solid var(--border); padding-top: .45rem; margin-top: .45rem;
+    }
+
+    .empty-state {
+      text-align: center; padding: 3.5rem 1rem;
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+    .empty-icon { font-size: 2.5rem; margin-bottom: .75rem; }
+    .empty-state h3 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
+    .empty-state p  { font-size: .875rem; color: var(--text-muted); margin-bottom: 1.25rem; }
+
+    .loading-state {
+      text-align: center; padding: 3rem 1rem; color: var(--text-muted); font-size: .9rem;
+    }
+    .spinner {
+      width: 32px; height: 32px; border: 3px solid var(--border);
+      border-top-color: var(--primary); border-radius: 50%;
+      animation: spin .65s linear infinite; margin: 0 auto .85rem;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+  </style>
 </head>
 <body>
 <div id="sidebarMount"></div>
@@ -12,17 +95,20 @@
   <header class="topbar">
     <div class="flex items-center gap-2">
       <button class="btn btn-ghost btn-sm" id="sidebarToggle">☰</button>
-      <span class="topbar-title">AI Recommendations</span>
+      <span class="topbar-title">Recommendations</span>
+    </div>
+    <div style="display:flex;gap:.5rem;">
+      <button class="btn btn-primary btn-sm" id="genBtn" onclick="generateRec()">Generate Recommendation</button>
+      <button class="btn btn-ghost btn-sm" onclick="load()">Refresh</button>
     </div>
   </header>
 
   <div class="page-content">
-    <div class="mb-6">
-      <p class="text-muted text-sm">Personalised recommendations based on your activities, tailored for Nepali lifestyle and diet.</p>
-    </div>
-
-    <div id="recList">
-      <p class="text-muted text-sm">Loading recommendations...</p>
+    <div id="planContent">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        Loading…
+      </div>
     </div>
   </div>
 </div>
@@ -31,61 +117,132 @@
 <script src="/js/app.js"></script>
 <script src="/js/sidebar.js"></script>
 <script>
-  requireAuth();
-  document.getElementById('sidebarMount').innerHTML = renderSidebar();
-  initSidebar();
+requireAuth();
+document.getElementById('sidebarMount').innerHTML = renderSidebar();
+initSidebar();
 
-  async function load() {
-    try {
-      const recs = await api.getUserRecommendations();
-      const el = document.getElementById('recList');
-      if (!recs.length) {
-        el.innerHTML = `
-          <div class="card text-center" style="padding:48px;">
-            <div style="font-size:3rem;margin-bottom:16px;">💡</div>
-            <h3 style="margin-bottom:8px;">No recommendations yet</h3>
-            <p class="text-muted text-sm" style="margin-bottom:20px;">Log some activities and click "Recommendations" to generate AI-powered tips tailored to your goals.</p>
-            <a href="/activities.html" class="btn btn-primary">Go to Activities</a>
-          </div>`;
-        return;
-      }
-      el.innerHTML = recs.map((rec, i) => `
-        <div class="card mb-6">
-          <div class="card-header">
-            <div>
-              <span class="card-title">${activityIcon(rec.activityType ?? '')} ${formatType(rec.activityType ?? 'Activity')} Recommendations</span>
-              <div class="text-muted text-xs mt-1">${formatDateTime(rec.createdAt)}</div>
-            </div>
-            <span class="badge badge-${activityColor(rec.activityType)}">${formatType(rec.activityType ?? '')}</span>
-          </div>
+const MEAL_TYPE_ORDER = ['BREAKFAST', 'LUNCH', 'SNACK', 'DINNER'];
 
-          <div class="rec-section">
-            <div class="rec-section-title improvements">📈 Improvements</div>
-            <div class="rec-list">
-              ${(rec.improvements || []).map(item => `<div class="rec-item">${item}</div>`).join('')}
-            </div>
-          </div>
+async function generateRec() {
+  const btn = document.getElementById('genBtn');
+  const el  = document.getElementById('planContent');
+  if (btn) setLoading(btn, true);
+  el.innerHTML = `<div class="loading-state"><div class="spinner"></div>Generating your plan…</div>`;
 
-          <div class="rec-section">
-            <div class="rec-section-title suggestions">🍛 Suggestions & Nepali Food Tips</div>
-            <div class="rec-list">
-              ${(rec.suggestions || []).map(item => `<div class="rec-item">${item}</div>`).join('')}
-            </div>
-          </div>
+  console.log('[Recommendations] generateRec() → GET /api/recommendation/daily');
+  try {
+    const rec = await api.getDailyRecommendation();
+    console.log('[Recommendations] response:', rec);
+    el.innerHTML = renderDailyPlan(rec);
+  } catch (err) {
+    console.error('[Recommendations] failed:', err);
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <h3>Could not generate plan</h3>
+        <p>${escHtml(err.message)}</p>
+        <button class="btn btn-ghost btn-sm" onclick="generateRec()">Try again</button>
+      </div>`;
+  } finally {
+    if (btn) setLoading(btn, false);
+  }
+}
 
-          <div class="rec-section">
-            <div class="rec-section-title safety">⚠️ Safety Tips</div>
-            <div class="rec-list">
-              ${(rec.safety || []).map(item => `<div class="rec-item">${item}</div>`).join('')}
-            </div>
-          </div>
-        </div>`).join('');
-    } catch (err) {
-      document.getElementById('recList').innerHTML = `<p class="text-muted">Failed to load: ${err.message}</p>`;
-    }
+async function load() {
+  const el = document.getElementById('planContent');
+  el.innerHTML = `<div class="loading-state"><div class="spinner"></div>Loading…</div>`;
+
+  console.log('[Recommendations] load() → GET /api/recommendation/daily');
+  try {
+    const rec = await api.getDailyRecommendation();
+    console.log('[Recommendations] response:', rec);
+    if (!rec) throw new Error('Empty response from server');
+    el.innerHTML = renderDailyPlan(rec);
+  } catch (err) {
+    console.warn('[Recommendations] load() caught:', err.message);
+    const isNoData = err.message.includes('404') || err.message.includes('Empty response');
+    el.innerHTML = isNoData
+      ? `<div class="empty-state">
+           <div class="empty-icon">📅</div>
+           <h3>No daily plan yet</h3>
+           <p>Click <strong>Generate Recommendation</strong> to create tomorrow's personalised exercise and meal plan.</p>
+           <button class="btn btn-primary btn-sm" onclick="generateRec()">Generate Recommendation</button>
+         </div>`
+      : `<div class="empty-state">
+           <div class="empty-icon">⚠️</div>
+           <h3>Could not load plan</h3>
+           <p>${escHtml(err.message)}</p>
+           <button class="btn btn-ghost btn-sm" onclick="load()">Try again</button>
+         </div>`;
+  }
+}
+
+function renderDailyPlan(rec) {
+  console.log('[Recommendations] renderDailyPlan():', JSON.stringify(rec, null, 2));
+  if (!rec) return `
+    <div class="empty-state">
+      <div class="empty-icon">📅</div>
+      <h3>No daily plan yet</h3>
+      <p>Click <strong>Generate Recommendation</strong> to create tomorrow's personalised exercise and meal plan.</p>
+      <button class="btn btn-primary btn-sm" onclick="generateRec()">Generate Recommendation</button>
+    </div>`;
+
+  let html = `<div class="daily-card">
+    <div class="daily-card-title">
+      Tomorrow's Plan
+      <span style="font-size:.72rem;color:var(--text-secondary);font-weight:400;">Based on today's gym &amp; cardio logs</span>
+    </div>`;
+
+  if (rec.restDayRecommended) {
+    html += `
+      <div class="rest-banner">
+        <strong>Rest Day Recommended — ${rec.consecutiveGymDays ?? 0} consecutive gym days</strong>
+        <p>${escHtml(rec.restDayReason)}</p>
+      </div>`;
   }
 
-  load();
+  if (rec.exercisePlan) {
+    html += `
+      <div class="ex-plan">
+        <div class="ex-plan-title">Exercise: ${escHtml(rec.exercisePlan)}</div>
+        <div class="ex-plan-detail">${escHtml(rec.exercisePlanDetail)}</div>
+      </div>`;
+  }
+
+  if (rec.mealSuggestions && rec.mealSuggestions.length) {
+    html += `<div style="font-weight:700;font-size:.88rem;margin-bottom:.75rem;">Meal Suggestions</div>`;
+    html += `<div class="meal-grid">`;
+
+    const ordered = [...rec.mealSuggestions].sort(
+      (a, b) => MEAL_TYPE_ORDER.indexOf(a.mealType) - MEAL_TYPE_ORDER.indexOf(b.mealType)
+    );
+
+    html += ordered.map(m => `
+      <div class="meal-card">
+        <div class="meal-type meal-${escHtml(m.mealType)}">${escHtml(m.mealType.replace('_', ' '))}</div>
+        <div class="meal-name">${escHtml(m.foodName)}</div>
+        <div class="meal-cal">${m.calories ?? 0} <span>kcal</span></div>
+        <div class="meal-macros">
+          <div class="macro-pill mp-p"><span class="mp-val">${m.proteinG ?? 0}g</span>Protein</div>
+          <div class="macro-pill mp-c"><span class="mp-val">${m.carbsG ?? 0}g</span>Carbs</div>
+          <div class="macro-pill mp-f"><span class="mp-val">${m.fatG ?? 0}g</span>Fat</div>
+        </div>
+        <div class="meal-tip">${escHtml(m.tip)}</div>
+      </div>`).join('');
+
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function escHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+load();
 </script>
 </body>
 </html>

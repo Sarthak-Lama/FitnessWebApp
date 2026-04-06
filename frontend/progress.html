@@ -495,10 +495,9 @@ document.getElementById('weightForm').addEventListener('submit', async (e) => {
   const btn = document.getElementById('saveWeightBtn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
-    const userId = localStorage.getItem('userId');
     const t = document.getElementById('weightTime').value;
     await api.logWeight({
-      userId,
+      userId: localStorage.getItem('userId') || '',
       weightKg: parseFloat(document.getElementById('weightKg').value),
       notes: document.getElementById('weightNotes').value,
       loggedAt: t ? new Date(t).toISOString() : new Date().toISOString(),
@@ -541,10 +540,9 @@ document.getElementById('measureForm').addEventListener('submit', async (e) => {
   const btn = document.getElementById('saveMeasureBtn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
-    const userId = localStorage.getItem('userId');
     const dateVal = document.getElementById('mDate').value;
     await api.logMeasurement({
-      userId,
+      userId: localStorage.getItem('userId') || '',
       loggedDate: dateVal || null,
       unit: selectedUnit,
       chest:      parseFloatOrNull('mChest'),

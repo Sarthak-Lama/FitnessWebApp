@@ -720,7 +720,7 @@
     setLoading(btn, true);
     try {
       await api.logFood({
-        userId: localStorage.getItem('userId'),
+        userId: localStorage.getItem('userId') || '',
         foodName: name,
         calories: Math.round(calories * 10) / 10,
         protein:  Math.round(protein * 10) / 10,
@@ -877,7 +877,7 @@
     setLoading(btn, true);
     try {
       const res = await api.logSet({
-        userId: localStorage.getItem('userId'),
+        userId: localStorage.getItem('userId') || '',
         exerciseName: name,
         muscleGroup: muscle,
         sets, reps,
@@ -975,7 +975,7 @@
     setLoading(btn, true);
     try {
       await api.logCardio({
-        userId: localStorage.getItem('userId'),
+        userId: localStorage.getItem('userId') || '',
         activityType:    activity,
         cardioType:      type,
         durationMinutes: dur,

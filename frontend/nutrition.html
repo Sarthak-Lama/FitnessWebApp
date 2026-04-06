@@ -322,10 +322,9 @@
     const btn = document.getElementById('saveFoodBtn');
     setLoading(btn, true);
     try {
-      const userId = localStorage.getItem('userId');
       const t = document.getElementById('foodTime').value;
       await api.logFood({
-        userId,
+        userId: localStorage.getItem('userId') || '',
         foodName:    document.getElementById('foodName').value,
         calories:    parseFloat(document.getElementById('foodCals').value),
         protein:     parseFloat(document.getElementById('foodProtein').value) || 0,
