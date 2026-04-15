@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FitTrack — Progress</title>
+  <title>Fitness App — Progress</title>
   <link rel="stylesheet" href="css/style.css" />
   <style>
     /* ── Tab nav ─────────────────────────────────────── */
@@ -174,7 +174,6 @@
 
         <div class="sec-hd">
           <h2>Body Measurements History</h2>
-          <button class="btn btn-primary btn-sm" onclick="openMeasureModal()">+ Log Measurements</button>
         </div>
 
         <div class="chart-card" id="measurementTableCard">
@@ -492,6 +491,13 @@ function closeWeightModal() {
 
 document.getElementById('weightForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const kgRaw = document.getElementById('weightKg').value;
+  const kg = parseFloat(kgRaw);
+  if (!kgRaw || isNaN(kg) || kg <= 0) {
+    document.getElementById('weightAlert').innerHTML =
+      `<div style="color:#dc2626;font-size:.85rem;margin-bottom:.75rem;">Please enter a valid weight.</div>`;
+    return;
+  }
   const btn = document.getElementById('saveWeightBtn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
@@ -537,6 +543,13 @@ function closeMeasureModal() {
 
 document.getElementById('measureForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const measureFields = ['mChest','mWaist','mHips','mLeftArm','mRightArm','mLeftThigh','mRightThigh','mNeck'];
+  const anyFilled = measureFields.some(id => document.getElementById(id).value.trim() !== '');
+  if (!anyFilled) {
+    document.getElementById('measureAlert').innerHTML =
+      `<div style="color:#dc2626;font-size:.85rem;margin-bottom:.75rem;">Please enter at least one measurement.</div>`;
+    return;
+  }
   const btn = document.getElementById('saveMeasureBtn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {

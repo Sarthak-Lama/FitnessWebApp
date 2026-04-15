@@ -1,5 +1,5 @@
 /**
- * FitTrack API Client
+ * Fitness App API Client
  * Backend must be running at http://localhost:8080
  */
 const API_BASE = 'http://localhost:8080/api';
@@ -24,7 +24,7 @@ const api = {
     });
     if (res.status === 401) {
       localStorage.clear();
-      window.location.href = 'index.html';
+      window.location.href = 'login.html';
       return;
     }
     if (!res.ok) {

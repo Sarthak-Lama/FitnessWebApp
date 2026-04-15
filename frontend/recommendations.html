@@ -3,89 +3,51 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FitTrack — Recommendations</title>
+  <title>Fitness App — Recommendations</title>
   <link rel="stylesheet" href="css/style.css" />
   <style>
+    /* ── Tab navigation ──────────────────────────────── */
+    .rec-tabs {
+      display: flex; gap: 0; border-bottom: 2px solid var(--border);
+      margin-bottom: 1.25rem; overflow-x: auto; scrollbar-width: none;
+    }
+    .rec-tabs::-webkit-scrollbar { display: none; }
+    .rec-tab {
+      padding: .6rem 1.15rem; font-size: .82rem; font-weight: 600;
+      border: none; background: transparent; color: var(--text-muted);
+      cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent;
+      margin-bottom: -2px; transition: all .2s;
+    }
+    .rec-tab:hover { color: var(--text); }
+    .rec-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeIn .2s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+
     /* ── Page header ─────────────────────────────────── */
     .sec-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.5rem; }
     .sec-hd h1 { font-size:1.45rem; font-weight:800; }
 
-    /* ── Daily plan card ─────────────────────────────── */
-    .daily-card {
+    /* ── Cards ───────────────────────────────────────── */
+    .rec-card {
       background: var(--card-bg); border: 1px solid var(--border);
-      border-radius: 14px; padding: 1.25rem 1.4rem;
+      border-radius: 14px; padding: 1.25rem 1.4rem; margin-bottom: 1rem;
     }
-    .daily-card-title {
-      font-size: 1rem; font-weight: 700; margin-bottom: 1rem;
+    .rec-card-title {
+      font-size: .95rem; font-weight: 700; margin-bottom: 1rem;
       display: flex; align-items: center; justify-content: space-between;
     }
+    .rec-card-title .badge {
+      font-size: .65rem; font-weight: 700; padding: .2rem .55rem;
+      border-radius: 100px; text-transform: uppercase; letter-spacing: .05em;
+    }
+    .badge-green  { background: rgba(16,185,129,.15); color: #059669; }
+    .badge-blue   { background: rgba(59,130,246,.15);  color: #2563eb; }
+    .badge-orange { background: rgba(245,158,11,.15);  color: #d97706; }
+    .badge-red    { background: rgba(239,68,68,.15);   color: #dc2626; }
+    .badge-purple { background: rgba(139,92,246,.15);  color: #7c3aed; }
 
-    /* rest-day banner */
-    .rest-banner {
-      background: #f5f3ff; border: 1px solid #ddd6fe;
-      border-radius: 10px; padding: 1rem 1.1rem;
-      margin-bottom: 1rem;
-    }
-    .rest-banner strong { color: #6d28d9; }
-    .rest-banner p { font-size: .875rem; color: var(--text-muted); margin-top: .3rem; line-height: 1.55; }
-
-    /* exercise plan block */
-    .ex-plan {
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 10px; padding: .85rem 1rem;
-      margin-bottom: 1rem;
-    }
-    .ex-plan-title { font-weight: 700; font-size: .9rem; margin-bottom: .35rem; }
-    .ex-plan-detail { font-size: .85rem; color: var(--text-muted); line-height: 1.55; }
-
-    /* meal suggestions grid */
-    .meal-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: .85rem; margin-bottom: 1rem;
-    }
-    .meal-card {
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 10px; padding: .85rem 1rem;
-    }
-    .meal-type {
-      font-size: .68rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .06em; margin-bottom: .4rem;
-    }
-    .meal-BREAKFAST { color: #92400e; }
-    .meal-LUNCH     { color: #1d4ed8; }
-    .meal-DINNER    { color: #991b1b; }
-    .meal-SNACK     { color: #15803d; }
-
-    .meal-name { font-weight: 700; font-size: .88rem; margin-bottom: .4rem; }
-    .meal-cal  { font-size: 1.1rem; font-weight: 800; color: var(--text); }
-    .meal-cal span { font-size: .72rem; font-weight: 400; color: var(--text-muted); }
-
-    .meal-macros { display: flex; gap: .35rem; margin: .5rem 0; }
-    .macro-pill {
-      flex: 1; text-align: center; padding: .25rem .2rem;
-      border-radius: 4px; font-size: .7rem;
-    }
-    .macro-pill .mp-val { font-weight: 700; display: block; font-size: .82rem; }
-    .mp-p { background: #dbeafe; color: #1e40af; }
-    .mp-c { background: #fef3c7; color: #92400e; }
-    .mp-f { background: #fee2e2; color: #991b1b; }
-
-    .meal-tip {
-      font-size: .75rem; color: var(--text-muted); line-height: 1.5;
-      border-top: 1px solid var(--border); padding-top: .45rem; margin-top: .45rem;
-    }
-
-    /* ── Analysis section ───────────────────────────── */
-    .analysis-card {
-      background: var(--card-bg); border: 1px solid var(--border);
-      border-radius: 14px; padding: 1.25rem 1.4rem;
-      margin-bottom: 1rem;
-    }
-    .analysis-card-title {
-      font-size: 1rem; font-weight: 700; margin-bottom: 1rem;
-      display: flex; align-items: center; justify-content: space-between;
-    }
+    /* ── Stat chips (Today's Analysis) ──────────────── */
     .analysis-stats {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr));
       gap: .6rem; margin-bottom: 1rem;
@@ -95,7 +57,7 @@
       border-radius: 10px; padding: .7rem .9rem; text-align: center;
     }
     .stat-chip .sv { font-size: 1.35rem; font-weight: 800; color: var(--text); }
-    .stat-chip .sl { font-size: .7rem; color: var(--text-muted); margin-top: .1rem; }
+    .stat-chip .sl { font-size: .7rem; color: var(--text-muted); margin-top: .15rem; }
     .analysis-points { list-style: none; padding: 0; margin: 0; }
     .analysis-points li {
       font-size: .85rem; color: var(--text-muted); line-height: 1.6;
@@ -104,19 +66,131 @@
     .analysis-points li:last-child { border-bottom: none; }
     .analysis-points li::before { content: "•"; color: var(--primary); margin-right: .5rem; font-weight: 700; }
 
+    /* ── Insight cards (Training Insights) ───────────── */
+    .insights-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 1rem;
+    }
+    .insight-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.1rem; }
+    .insight-header {
+      display: flex; align-items: center; gap: .5rem; margin-bottom: .75rem; font-weight: 700; font-size: .88rem;
+    }
+    .insight-icon { font-size: 1.1rem; }
+    .insight-list { list-style: none; padding: 0; margin: 0; }
+    .insight-list li {
+      font-size: .82rem; color: var(--text-muted); line-height: 1.55;
+      padding: .3rem 0; border-bottom: 1px dashed var(--border);
+      display: flex; gap: .5rem;
+    }
+    .insight-list li:last-child { border-bottom: none; }
+    .insight-list li::before { content: "→"; color: var(--primary); font-weight: 700; flex-shrink: 0; }
+
+    /* ── Rest-day banner ─────────────────────────────── */
+    .rest-banner {
+      background: #f5f3ff; border: 1px solid #ddd6fe;
+      border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: 1rem;
+    }
+    .rest-banner strong { color: #6d28d9; }
+    .rest-banner p { font-size: .875rem; color: var(--text-muted); margin-top: .3rem; line-height: 1.55; }
+
+    /* ── Overall message banner ──────────────────────── */
+    .overall-msg {
+      background: rgba(99,102,241,.08); border-left: 3px solid var(--primary);
+      border-radius: 0 10px 10px 0; padding: .85rem 1rem; margin-bottom: 1rem;
+      font-size: .88rem; line-height: 1.6; color: var(--text);
+    }
+
+    /* ── Exercise plan ───────────────────────────────── */
+    .ex-plan {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: .9rem 1rem; margin-bottom: 1rem;
+    }
+    .ex-plan-header { display: flex; align-items: center; gap: .65rem; margin-bottom: .6rem; flex-wrap: wrap; }
+    .ex-plan-title  { font-weight: 700; font-size: .92rem; }
+    .ex-plan-meta   { font-size: .75rem; color: var(--text-muted); display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: .5rem; }
+    .ex-plan-meta span { display: flex; align-items: center; gap: .25rem; }
+    .ex-exercises   { list-style: none; padding: 0; margin: .3rem 0 0; }
+    .ex-exercises li {
+      font-size: .82rem; color: var(--text-muted); padding: .25rem 0;
+      border-bottom: 1px dashed var(--border); display: flex; align-items: flex-start; gap: .4rem;
+    }
+    .ex-exercises li:last-child { border-bottom: none; }
+    .ex-exercises li::before { content: "▸"; color: var(--primary); flex-shrink: 0; }
+    .ex-plan-notes { font-size: .78rem; color: var(--text-muted); margin-top: .6rem; font-style: italic; }
+
+    /* ── Reminders ───────────────────────────────────── */
+    .reminder-list { list-style: none; padding: 0; margin: 0; }
+    .reminder-list li {
+      font-size: .84rem; color: var(--text-muted); line-height: 1.55;
+      padding: .4rem 0; border-bottom: 1px solid var(--border);
+      display: flex; gap: .5rem; align-items: flex-start;
+    }
+    .reminder-list li:last-child { border-bottom: none; }
+    .reminder-list li::before { content: "⏰"; font-size: .8rem; flex-shrink: 0; margin-top: .05rem; }
+
+    /* ── Meal plan ───────────────────────────────────── */
+    .meal-target-bar {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: .8rem 1rem; margin-bottom: 1rem;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem;
+    }
+    .meal-target-bar .mtb-label { font-size: .8rem; color: var(--text-muted); }
+    .meal-target-bar .mtb-val   { font-size: 1.3rem; font-weight: 800; color: var(--text); }
+    .meal-target-bar .mtb-adj   { font-size: .75rem; color: var(--text-muted); }
+
+    .meal-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr));
+      gap: .85rem; margin-bottom: 1rem;
+    }
+    .meal-card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: .85rem 1rem;
+    }
+    .meal-type-label {
+      font-size: .65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; margin-bottom: .35rem;
+    }
+    .mt-BREAKFAST       { color: #d97706; }
+    .mt-MORNING_SNACK   { color: #059669; }
+    .mt-LUNCH           { color: #2563eb; }
+    .mt-AFTERNOON_SNACK { color: #7c3aed; }
+    .mt-DINNER          { color: #dc2626; }
+    .mt-SNACK           { color: #059669; }
+
+    .meal-food-name { font-weight: 700; font-size: .88rem; margin-bottom: .1rem; }
+    .meal-nepali    { font-size: .72rem; color: var(--text-muted); margin-bottom: .35rem; }
+    .meal-cal-row   { font-size: 1.1rem; font-weight: 800; color: var(--text); margin-bottom: .35rem; }
+    .meal-cal-row span { font-size: .7rem; font-weight: 400; color: var(--text-muted); }
+    .meal-serving   { font-size: .7rem; color: var(--text-muted); margin-bottom: .4rem; }
+    .meal-macros    { display: flex; gap: .3rem; margin: .35rem 0; }
+    .macro-pill {
+      flex: 1; text-align: center; padding: .22rem .15rem; border-radius: 4px; font-size: .68rem;
+    }
+    .macro-pill .mp-val { font-weight: 700; display: block; font-size: .78rem; }
+    .mp-p { background: #dbeafe; color: #1e40af; }
+    .mp-c { background: #fef3c7; color: #92400e; }
+    .mp-f { background: #fee2e2; color: #991b1b; }
+    .meal-tip {
+      font-size: .73rem; color: var(--text-muted); line-height: 1.45;
+      border-top: 1px solid var(--border); padding-top: .4rem; margin-top: .4rem;
+    }
+
+    .macros-totals {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+      padding: .8rem 1rem; display: grid;
+      grid-template-columns: repeat(4, 1fr); gap: .5rem; text-align: center;
+    }
+    .mt-item .mt-val { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+    .mt-item .mt-lbl { font-size: .68rem; color: var(--text-muted); margin-top: .1rem; }
+
     /* ── Empty / loading ─────────────────────────────── */
     .empty-state {
       text-align: center; padding: 3.5rem 1rem;
-      background: var(--card-bg); border: 1px solid var(--border);
-      border-radius: 14px;
+      background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px;
     }
     .empty-icon { font-size: 2.5rem; margin-bottom: .75rem; }
     .empty-state h3 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
     .empty-state p  { font-size: .875rem; color: var(--text-muted); margin-bottom: 1.25rem; }
-
-    .loading-state {
-      text-align: center; padding: 3rem 1rem; color: var(--text-muted); font-size: .9rem;
-    }
+    .loading-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); font-size: .9rem; }
     .spinner {
       width: 32px; height: 32px; border: 3px solid var(--border);
       border-top-color: var(--primary); border-radius: 50%;
@@ -164,102 +238,113 @@ requireAuth();
 document.getElementById('sidebarContainer').innerHTML = renderSidebar();
 initSidebar();
 
-const MEAL_TYPE_ORDER = ['BREAKFAST', 'LUNCH', 'SNACK', 'DINNER'];
+const MEAL_TYPE_ORDER = ['BREAKFAST','MORNING_SNACK','LUNCH','AFTERNOON_SNACK','DINNER'];
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.rec-tab').forEach(b => b.classList.remove('active'));
+  const panel = document.getElementById('tab-' + id);
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
+}
 
 async function generateRec() {
   const btn = document.getElementById('genBtn');
   const el  = document.getElementById('planContent');
   if (btn) setLoading(btn, true);
   el.innerHTML = `<div class="loading-state"><div class="spinner"></div>Generating your plan…</div>`;
-
-  console.log('[Recommendations] generateRec() called → GET /api/recommendation/daily');
   try {
     const rec = await api.getDailyRecommendation();
-    console.log('[Recommendations] getDailyRecommendation() response:', rec);
     el.innerHTML = renderDailyPlan(rec);
   } catch (err) {
-    console.error('[Recommendations] getDailyRecommendation() failed:', err);
-    el.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">⚠️</div>
-        <h3>Could not generate plan</h3>
-        <p>${escHtml(err.message)}</p>
-        <button class="btn btn-ghost btn-sm" onclick="generateRec()">Try again</button>
-      </div>`;
-  } finally {
-    if (btn) setLoading(btn, false);
-  }
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>
+      <h3>Could not generate plan</h3><p>${escHtml(err.message)}</p>
+      <button class="btn btn-ghost btn-sm" onclick="generateRec()">Try again</button></div>`;
+  } finally { if (btn) setLoading(btn, false); }
 }
 
 async function load() {
   const el = document.getElementById('planContent');
   el.innerHTML = `<div class="loading-state"><div class="spinner"></div>Loading…</div>`;
-
-  console.log('[Recommendations] load() called → GET /api/recommendation/daily');
   try {
     const rec = await api.getDailyRecommendation();
-    console.log('[Recommendations] getDailyRecommendation() response:', rec);
-    if (!rec) {
-      throw new Error('Empty response from server');
-    }
+    if (!rec) throw new Error('Empty response from server');
     el.innerHTML = renderDailyPlan(rec);
   } catch (err) {
-    console.warn('[Recommendations] load() caught:', err.message);
-    // Distinguish "no data yet" (404/empty) from real server errors (5xx)
-    const isNoData = err.message.includes('404') || err.message.includes('Empty response');
+    const isNoData = err.message.includes('404') || err.message.includes('Empty');
     el.innerHTML = isNoData
-      ? `<div class="empty-state">
-           <div class="empty-icon">📅</div>
+      ? `<div class="empty-state"><div class="empty-icon">📅</div>
            <h3>No daily plan yet</h3>
-           <p>Click <strong>Generate Recommendation</strong> to create tomorrow's personalised exercise and meal plan.</p>
-           <button class="btn btn-primary btn-sm" onclick="generateRec()">Generate Recommendation</button>
-         </div>`
-      : `<div class="empty-state">
-           <div class="empty-icon">⚠️</div>
-           <h3>Could not load plan</h3>
-           <p>${escHtml(err.message)}</p>
-           <button class="btn btn-ghost btn-sm" onclick="load()">Try again</button>
-         </div>`;
+           <p>Click <strong>Generate Recommendation</strong> to create today's analysis and tomorrow's personalised plan.</p>
+           <button class="btn btn-primary btn-sm" onclick="generateRec()">Generate Recommendation</button></div>`
+      : `<div class="empty-state"><div class="empty-icon">⚠️</div>
+           <h3>Could not load plan</h3><p>${escHtml(err.message)}</p>
+           <button class="btn btn-ghost btn-sm" onclick="load()">Try again</button></div>`;
   }
 }
 
+/* ════════════════════════════════════════════════
+   RENDER FUNCTIONS
+════════════════════════════════════════════════ */
 function renderDailyPlan(rec) {
-  console.log('[Recommendations] renderDailyPlan() called with:', JSON.stringify(rec, null, 2));
-  if (!rec) return `
-    <div class="empty-state">
-      <div class="empty-icon">📅</div>
-      <h3>No daily plan yet</h3>
-      <p>Click <strong>Generate Recommendation</strong> to create today's analysis and tomorrow's personalised plan.</p>
-      <button class="btn btn-primary btn-sm" onclick="generateRec()">Generate Recommendation</button>
-    </div>`;
+  if (!rec) return `<div class="empty-state"><div class="empty-icon">📅</div>
+    <h3>No daily plan yet</h3>
+    <p>Click <strong>Generate Recommendation</strong> to create your personalised plan.</p>
+    <button class="btn btn-primary btn-sm" onclick="generateRec()">Generate Recommendation</button></div>`;
 
-  let html = '';
+  return `
+    <div class="rec-tabs">
+      <button class="rec-tab active" onclick="switchTab('today',this)">Today's Analysis</button>
+      <button class="rec-tab" onclick="switchTab('insights',this)">Training Insights</button>
+      <button class="rec-tab" onclick="switchTab('tomorrow',this)">Tomorrow's Plan</button>
+      <button class="rec-tab" onclick="switchTab('meals',this)">Meal Plan</button>
+    </div>
+    <div id="tab-today"    class="tab-panel active">${renderAnalysis(rec)}</div>
+    <div id="tab-insights" class="tab-panel">${renderInsights(rec)}</div>
+    <div id="tab-tomorrow" class="tab-panel">${renderTomorrow(rec)}</div>
+    <div id="tab-meals"    class="tab-panel">${renderMeals(rec)}</div>
+  `;
+}
 
-  // ── Section 1: Today's Analysis ──────────────────────
-  html += `<div class="analysis-card">
-    <div class="analysis-card-title">
-      Today's Analysis
-      <span style="font-size:.72rem;color:var(--text-muted);font-weight:400;">Based on today's food &amp; activity logs</span>
-    </div>`;
+/* ── Tab 1: Today's Analysis ──────────────────── */
+function renderAnalysis(rec) {
+  let html = `<div class="rec-card">
+    <div class="rec-card-title">Today's Analysis
+      <span class="badge badge-blue">Live</span>
+    </div>
+    <div class="analysis-stats">`;
 
-  html += `<div class="analysis-stats">`;
-  if (rec.calorieGoal > 0) {
-    const pct = rec.caloriesConsumed > 0 ? Math.round(rec.caloriesConsumed * 100 / rec.calorieGoal) : 0;
-    html += `<div class="stat-chip"><div class="sv">${Math.round(rec.caloriesConsumed ?? 0)}</div><div class="sl">kcal eaten (${pct}% of ${rec.calorieGoal} goal)</div></div>`;
+  const calPct = rec.calorieGoal > 0 ? Math.round((rec.caloriesConsumed ?? 0) * 100 / rec.calorieGoal) : null;
+  if (calPct !== null) {
+    html += `<div class="stat-chip"><div class="sv">${Math.round(rec.caloriesConsumed ?? 0)}</div>
+      <div class="sl">kcal eaten (${calPct}% of ${rec.calorieGoal})</div></div>`;
   } else {
-    html += `<div class="stat-chip"><div class="sv">${Math.round(rec.caloriesConsumed ?? 0)}</div><div class="sl">kcal eaten today</div></div>`;
+    html += `<div class="stat-chip"><div class="sv">${Math.round(rec.caloriesConsumed ?? 0)}</div>
+      <div class="sl">kcal eaten today</div></div>`;
   }
+
   if (rec.proteinGoalG > 0) {
-    html += `<div class="stat-chip"><div class="sv">${Math.round(rec.proteinConsumedG ?? 0)}g</div><div class="sl">protein (goal ${rec.proteinGoalG}g)</div></div>`;
+    html += `<div class="stat-chip"><div class="sv">${Math.round(rec.proteinConsumedG ?? 0)}g</div>
+      <div class="sl">protein (goal ${rec.proteinGoalG}g)</div></div>`;
   } else {
-    html += `<div class="stat-chip"><div class="sv">${Math.round(rec.proteinConsumedG ?? 0)}g</div><div class="sl">protein eaten</div></div>`;
+    html += `<div class="stat-chip"><div class="sv">${Math.round(rec.proteinConsumedG ?? 0)}g</div>
+      <div class="sl">protein eaten</div></div>`;
   }
-  html += `<div class="stat-chip"><div class="sv">${rec.gymSetsToday ?? 0}</div><div class="sl">gym sets logged</div></div>`;
-  if (rec.totalCardioMinutes > 0) {
-    html += `<div class="stat-chip"><div class="sv">${rec.totalCardioMinutes}</div><div class="sl">cardio minutes</div></div>`;
+
+  html += `<div class="stat-chip"><div class="sv">${rec.gymSetsToday ?? 0}</div><div class="sl">gym sets</div></div>`;
+
+  if ((rec.totalCardioMinutes ?? 0) > 0) {
+    html += `<div class="stat-chip"><div class="sv">${rec.totalCardioMinutes}</div><div class="sl">cardio min</div></div>`;
   } else {
     html += `<div class="stat-chip"><div class="sv">${rec.cardioSessionsToday ?? 0}</div><div class="sl">cardio sessions</div></div>`;
   }
+
+  html += `<div class="stat-chip"><div class="sv">${Math.round(rec.totalCaloriesToday ?? 0)}</div><div class="sl">kcal burned</div></div>`;
+
+  if (rec.consecutiveGymDays > 0) {
+    html += `<div class="stat-chip"><div class="sv">${rec.consecutiveGymDays}</div><div class="sl">gym day streak</div></div>`;
+  }
+
   html += `</div>`;
 
   if (rec.analysisPoints && rec.analysisPoints.length) {
@@ -267,63 +352,197 @@ function renderDailyPlan(rec) {
     html += rec.analysisPoints.map(p => `<li>${escHtml(p)}</li>`).join('');
     html += `</ul>`;
   }
-
   html += `</div>`;
+  return html;
+}
 
-  // ── Section 2: Tomorrow's Plan ────────────────────────
-  html += `<div class="daily-card">
-    <div class="daily-card-title">
-      Tomorrow's Plan
-      <span style="font-size:.72rem;color:var(--text-muted);font-weight:400;">Based on today's gym &amp; cardio logs</span>
-    </div>`;
+/* ── Tab 2: Training Insights ─────────────────── */
+function renderInsights(rec) {
+  const imp  = rec.improvements  || [];
+  const sug  = rec.suggestions   || [];
+  const safe = rec.safetyTips    || [];
+
+  return `<div class="insights-grid">
+    <div class="insight-card">
+      <div class="insight-header">
+        <span class="insight-icon">📈</span>
+        <span style="color:var(--primary);">Training Improvements</span>
+      </div>
+      <ul class="insight-list">${imp.length ? imp.map(s => `<li>${escHtml(s)}</li>`).join('') : '<li>Log a workout to get improvement tips.</li>'}</ul>
+    </div>
+    <div class="insight-card">
+      <div class="insight-header">
+        <span class="insight-icon">🍛</span>
+        <span style="color:#d97706;">Food &amp; Lifestyle</span>
+      </div>
+      <ul class="insight-list">${sug.length ? sug.map(s => `<li>${escHtml(s)}</li>`).join('') : '<li>Set up your profile to get personalised suggestions.</li>'}</ul>
+    </div>
+    <div class="insight-card">
+      <div class="insight-header">
+        <span class="insight-icon">🛡️</span>
+        <span style="color:#dc2626;">Safety Tips</span>
+      </div>
+      <ul class="insight-list">${safe.length ? safe.map(s => `<li>${escHtml(s)}</li>`).join('') : '<li>General safety guidance will appear here.</li>'}</ul>
+    </div>
+  </div>`;
+}
+
+/* ── Tab 3: Tomorrow's Plan ───────────────────── */
+function renderTomorrow(rec) {
+  let html = '';
+
+  if (rec.overallMessage) {
+    html += `<div class="overall-msg">${escHtml(rec.overallMessage)}</div>`;
+  }
 
   if (rec.restDayRecommended) {
-    html += `
-      <div class="rest-banner">
-        <strong>Rest Day Recommended — ${rec.consecutiveGymDays ?? 0} consecutive gym days</strong>
-        <p>${escHtml(rec.restDayReason)}</p>
-      </div>`;
+    html += `<div class="rest-banner"><strong>Rest Day Recommended — ${rec.consecutiveGymDays} consecutive gym days</strong>
+      <p>${escHtml(rec.restDayReason ?? '')}</p></div>`;
   }
 
-  if (rec.exercisePlan) {
-    html += `
+  // Detailed exercise plan (if available)
+  const ex = rec.detailedExercisePlan;
+  if (ex && ex.sessionTitle) {
+    const intensityColor = ex.intensity === 'HIGH' ? 'badge-red' : ex.intensity === 'MODERATE' ? 'badge-orange' : 'badge-green';
+    html += `<div class="rec-card">
+      <div class="rec-card-title">Exercise Plan
+        <span class="badge ${intensityColor}">${escHtml(ex.intensity ?? '')}</span>
+      </div>
       <div class="ex-plan">
-        <div class="ex-plan-title">Exercise: ${escHtml(rec.exercisePlan)}</div>
-        <div class="ex-plan-detail">${escHtml(rec.exercisePlanDetail)}</div>
-      </div>`;
-  }
-
-  if (rec.mealSuggestions && rec.mealSuggestions.length) {
-    html += `<div style="font-weight:700;font-size:.88rem;margin-bottom:.75rem;">Meal Suggestions</div>`;
-    html += `<div class="meal-grid">`;
-
-    const ordered = [...rec.mealSuggestions].sort(
-      (a, b) => MEAL_TYPE_ORDER.indexOf(a.mealType) - MEAL_TYPE_ORDER.indexOf(b.mealType)
-    );
-
-    html += ordered.map(m => `
-      <div class="meal-card">
-        <div class="meal-type meal-${escHtml(m.mealType)}">${escHtml(m.mealType.replace('_', ' '))}</div>
-        <div class="meal-name">${escHtml(m.foodName)}</div>
-        <div class="meal-cal">${m.calories ?? 0} <span>kcal</span></div>
-        <div class="meal-macros">
-          <div class="macro-pill mp-p"><span class="mp-val">${m.proteinG ?? 0}g</span>Protein</div>
-          <div class="macro-pill mp-c"><span class="mp-val">${m.carbsG ?? 0}g</span>Carbs</div>
-          <div class="macro-pill mp-f"><span class="mp-val">${m.fatG ?? 0}g</span>Fat</div>
+        <div class="ex-plan-header">
+          <span class="ex-plan-title">${escHtml(ex.sessionTitle)}</span>
+          ${ex.targetMuscleGroup ? `<span class="badge badge-blue">${escHtml(ex.targetMuscleGroup)}</span>` : ''}
+          <span class="badge badge-purple">${escHtml(ex.sessionType ?? '')}</span>
         </div>
-        <div class="meal-tip">${escHtml(m.tip)}</div>
-      </div>`).join('');
-
-    html += `</div>`;
+        <div class="ex-plan-meta">
+          ${ex.durationMinutes ? `<span>⏱ ${ex.durationMinutes} min</span>` : ''}
+          ${ex.estimatedCaloriesBurn > 0 ? `<span>🔥 ~${Math.round(ex.estimatedCaloriesBurn)} kcal</span>` : ''}
+        </div>
+        ${ex.exercises && ex.exercises.length ? `<ul class="ex-exercises">${ex.exercises.map(e => `<li>${escHtml(e)}</li>`).join('')}</ul>` : ''}
+        ${ex.notes ? `<div class="ex-plan-notes">${escHtml(ex.notes)}</div>` : ''}
+      </div>
+    </div>`;
+  } else {
+    // Fallback to simple plan
+    html += `<div class="rec-card">
+      <div class="rec-card-title">Exercise Plan</div>
+      <div class="ex-plan">
+        <div class="ex-plan-title">${escHtml(rec.exercisePlan ?? 'Rest')}</div>
+        <div style="font-size:.85rem;color:var(--text-muted);margin-top:.4rem;line-height:1.55;">${escHtml(rec.exercisePlanDetail ?? '')}</div>
+      </div>
+    </div>`;
   }
 
+  // Reminders
+  const reminders = rec.reminders || [];
+  if (reminders.length) {
+    html += `<div class="rec-card">
+      <div class="rec-card-title">Reminders <span class="badge badge-orange">${reminders.length}</span></div>
+      <ul class="reminder-list">${reminders.map(r => `<li>${escHtml(r)}</li>`).join('')}</ul>
+    </div>`;
+  }
+
+  // Fitness goal & activity level
+  if (rec.fitnessGoal || rec.activityLevel) {
+    html += `<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;">
+      ${rec.fitnessGoal ? `<span class="badge badge-purple">Goal: ${escHtml(rec.fitnessGoal.replace(/_/g,' '))}</span>` : ''}
+      ${rec.activityLevel ? `<span class="badge badge-blue">Activity: ${escHtml(rec.activityLevel.replace(/_/g,' '))}</span>` : ''}
+    </div>`;
+  }
+
+  return html || `<div class="empty-state"><div class="empty-icon">📋</div>
+    <h3>Plan generating…</h3><p>Log today's activity to get a personalised tomorrow.</p></div>`;
+}
+
+/* ── Tab 4: Meal Plan ─────────────────────────── */
+function renderMeals(rec) {
+  const items = rec.detailedMealPlan;
+  if (!items || !items.length) {
+    return renderSimpleMeals(rec);
+  }
+
+  let html = '';
+
+  // Calorie target bar
+  if (rec.targetCalories > 0) {
+    const adj = rec.calorieAdjustment ?? 0;
+    const adjText = adj === 0 ? '' : adj > 0
+      ? `(+${Math.round(adj)} kcal adjustment for yesterday's deficit)`
+      : `(${Math.round(adj)} kcal adjustment for yesterday's surplus)`;
+    html += `<div class="meal-target-bar">
+      <div>
+        <div class="mtb-label">Tomorrow's Calorie Target</div>
+        <div class="mtb-val">${Math.round(rec.targetCalories)} <span style="font-size:.75rem;font-weight:400;color:var(--text-muted);">kcal</span></div>
+        ${adjText ? `<div class="mtb-adj">${escHtml(adjText)}</div>` : ''}
+      </div>
+      ${rec.baseGoal > 0 ? `<div style="text-align:right;">
+        <div class="mtb-label">Base daily goal</div>
+        <div style="font-size:1rem;font-weight:700;">${Math.round(rec.baseGoal)} kcal</div>
+      </div>` : ''}
+    </div>`;
+  }
+
+  const ordered = [...items].sort(
+    (a, b) => MEAL_TYPE_ORDER.indexOf(a.mealType) - MEAL_TYPE_ORDER.indexOf(b.mealType)
+  );
+
+  html += `<div class="meal-grid">`;
+  html += ordered.map(m => `
+    <div class="meal-card">
+      <div class="meal-type-label mt-${escHtml(m.mealType)}">${escHtml(m.mealType.replace(/_/g,' '))}</div>
+      <div class="meal-food-name">${escHtml(m.foodName)}</div>
+      ${m.nepaliName ? `<div class="meal-nepali">${escHtml(m.nepaliName)}</div>` : ''}
+      ${m.servingSize ? `<div class="meal-serving">Serving: ${escHtml(m.servingSize)}</div>` : ''}
+      <div class="meal-cal-row">${Math.round(m.calories)} <span>kcal</span></div>
+      <div class="meal-macros">
+        <div class="macro-pill mp-p"><span class="mp-val">${Math.round(m.proteinGrams)}g</span>Protein</div>
+        <div class="macro-pill mp-c"><span class="mp-val">${Math.round(m.carbsGrams)}g</span>Carbs</div>
+        <div class="macro-pill mp-f"><span class="mp-val">${Math.round(m.fatGrams)}g</span>Fat</div>
+      </div>
+      ${m.tip ? `<div class="meal-tip">${escHtml(m.tip)}</div>` : ''}
+    </div>`).join('');
+  html += `</div>`;
+
+  // Totals bar
+  if (rec.mealPlanTotalCalories > 0) {
+    html += `<div class="macros-totals">
+      <div class="mt-item"><div class="mt-val">${Math.round(rec.mealPlanTotalCalories)}</div><div class="mt-lbl">Total kcal</div></div>
+      <div class="mt-item"><div class="mt-val">${Math.round(rec.mealPlanTotalProtein)}g</div><div class="mt-lbl">Protein</div></div>
+      <div class="mt-item"><div class="mt-val">${Math.round(rec.mealPlanTotalCarbs)}g</div><div class="mt-lbl">Carbs</div></div>
+      <div class="mt-item"><div class="mt-val">${Math.round(rec.mealPlanTotalFat)}g</div><div class="mt-lbl">Fat</div></div>
+    </div>`;
+  }
+
+  return html;
+}
+
+function renderSimpleMeals(rec) {
+  const meals = rec.mealSuggestions;
+  if (!meals || !meals.length) return `<div class="empty-state"><div class="empty-icon">🍛</div>
+    <h3>No meal plan</h3><p>Generate a recommendation to see your personalised meal plan.</p></div>`;
+
+  const order = ['BREAKFAST','LUNCH','SNACK','DINNER'];
+  const ordered = [...meals].sort((a, b) => order.indexOf(a.mealType) - order.indexOf(b.mealType));
+
+  let html = `<div class="meal-grid">`;
+  html += ordered.map(m => `
+    <div class="meal-card">
+      <div class="meal-type-label mt-${escHtml(m.mealType)}">${escHtml(m.mealType.replace(/_/g,' '))}</div>
+      <div class="meal-food-name">${escHtml(m.foodName)}</div>
+      <div class="meal-cal-row">${m.calories ?? 0} <span>kcal</span></div>
+      <div class="meal-macros">
+        <div class="macro-pill mp-p"><span class="mp-val">${m.proteinG ?? 0}g</span>Protein</div>
+        <div class="macro-pill mp-c"><span class="mp-val">${m.carbsG ?? 0}g</span>Carbs</div>
+        <div class="macro-pill mp-f"><span class="mp-val">${m.fatG ?? 0}g</span>Fat</div>
+      </div>
+      ${m.tip ? `<div class="meal-tip">${escHtml(m.tip)}</div>` : ''}
+    </div>`).join('');
   html += `</div>`;
   return html;
 }
 
 function escHtml(str) {
-  return String(str ?? '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 load();

@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FitTrack — Your Personal Fitness Companion</title>
+  <title>Fitness App — Your Personal Fitness Companion</title>
+  <meta name="description" content="Fitness App helps you log workouts, monitor nutrition, and hit personal records." />
   <link rel="stylesheet" href="css/style.css" />
   <style>
     body {
@@ -178,10 +179,22 @@
     .footer-logo { font-weight: 700; color: var(--text); }
     .footer-logo span { color: var(--primary); }
 
-    @media (max-width: 480px) {
+    /* sm (≤640px) */
+    @media (max-width: 640px) {
       .nav { padding: 0 1rem; }
+      .nav-links { gap: .5rem; }
+      .hero { padding: 3.5rem 1rem 3rem; }
+      .hero h1 { font-size: clamp(1.6rem, 6vw, 2.4rem); }
+      .hero p { font-size: 1rem; }
+      .features { padding: 2.5rem 1rem 3rem; }
+      .features-header h2 { font-size: 1.3rem; }
       .features-grid { grid-template-columns: 1fr; }
-      .footer { justify-content: center; text-align: center; }
+      .cta-strip { padding: 2.5rem 1rem; }
+      .footer { justify-content: center; text-align: center; padding: 1rem; }
+    }
+    /* md (≤768px) */
+    @media (max-width: 768px) {
+      .features-grid { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
@@ -189,7 +202,7 @@
 
   <!-- Nav -->
   <nav class="nav">
-    <a class="nav-logo" href="landing.html">Fit<span>Track</span></a>
+    <a class="nav-logo" href="landing.html">Fitness<span>App</span></a>
     <div class="nav-links">
       <a href="index.html" class="btn btn-ghost btn-sm">Sign In</a>
       <a href="index.html#register" class="btn btn-primary btn-sm">Get Started</a>
@@ -200,7 +213,7 @@
   <section class="hero">
     <div class="hero-label">Personal Fitness Tracking</div>
     <h1>Track smarter.<br><span>Train harder.</span></h1>
-    <p>FitTrack helps you log workouts, monitor nutrition, and hit personal records — with recommendations built around your goals.</p>
+    <p>Fitness App helps you log workouts, monitor nutrition, and hit personal records — with recommendations built around your goals.</p>
     <div class="hero-actions">
       <a href="index.html#register" class="btn btn-primary">Get Started</a>
       <a href="index.html" class="btn btn-ghost">Sign In</a>
@@ -244,7 +257,7 @@
 
   <!-- Footer -->
   <footer class="footer">
-    <span class="footer-logo">Fit<span>Track</span></span>
+    <span class="footer-logo">Fitness<span>App</span></span>
     <span>Built for the 6th Semester Project &mdash; 2025</span>
   </footer>
 

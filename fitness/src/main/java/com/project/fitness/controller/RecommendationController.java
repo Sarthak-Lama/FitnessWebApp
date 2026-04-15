@@ -7,6 +7,7 @@ import com.project.fitness.service.DailyRecommendationService;
 import com.project.fitness.service.RecommendationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -51,10 +52,16 @@ public class RecommendationController {
     /**
      * Daily recommendation derived from today's gym (WorkoutSet) + cardio
      * (CardioSession) logs. Does not use the generic Activity table.
+     * X-User-ID header is preferred; falls back to the JWT principal if missing.
      */
     @GetMapping("/daily")
     public ResponseEntity<DailyRecommendationResponse> getDailyRecommendation(
-            @RequestHeader("X-User-ID") String userId) {
+            @RequestHeader(value = "X-User-ID", required = false) String headerUserId,
+            Authentication authentication) {
+        String userId = (headerUserId != null && !headerUserId.isBlank())
+                ? headerUserId
+                : (authentication != null ? (String) authentication.getPrincipal() : null);
+        if (userId == null) return ResponseEntity.status(401).build();
         return ResponseEntity.ok(dailyRecommendationService.generate(userId));
     }
 }

@@ -1,11 +1,11 @@
 /**
- * FitTrack - Shared app utilities
+ * Fitness App - Shared app utilities
  */
 
 // Redirect to login if not authenticated
 function requireAuth() {
   if (!localStorage.getItem('token')) {
-    window.location.href = '/index.html';
+    window.location.href = 'login.html';
   }
 }
 
@@ -31,14 +31,24 @@ function initSidebar() {
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) logoutBtn.addEventListener('click', () => {
     localStorage.clear();
-    window.location.href = '/index.html';
+    window.location.href = 'login.html';
   });
 
   // Mobile sidebar toggle
   const toggleBtn = document.getElementById('sidebarToggle');
   const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
   if (toggleBtn && sidebar) {
-    toggleBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
+    toggleBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+      overlay && overlay.classList.toggle('open');
+    });
+  }
+  if (overlay) {
+    overlay.addEventListener('click', () => {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('open');
+    });
   }
 }
 

@@ -8,7 +8,8 @@ function renderSidebar() {
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
     </svg>
-    Fit<span>Track</span>
+    Fitness<span>App
+   </span>
   </div>
   <nav class="sidebar-nav">
     <a class="nav-item" href="/dashboard.html" data-page="dashboard.html">

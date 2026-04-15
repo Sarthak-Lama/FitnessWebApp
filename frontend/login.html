@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FitTrack — Sign In / Sign Up</title>
+  <title>Fitness App — Sign In / Sign Up</title>
   <link rel="stylesheet" href="css/style.css" />
   <style>
     /* ---- Multi-step specific styles ---- */
@@ -84,6 +84,31 @@
       padding: 9px 12px; background: var(--bg-input); border-radius: 8px;
       margin-bottom: 12px; font-size: 0.85rem; display: none;
     }
+
+    /* ── Inline field validation ── */
+    .field-error {
+      font-size: 0.74rem; color: var(--danger);
+      margin-top: 4px; min-height: 1rem; line-height: 1.3;
+    }
+    .form-control.invalid { border-color: var(--danger) !important; background: #fff8f8; }
+    .form-control.valid   { border-color: var(--accent)  !important; }
+
+    /* Password strength meter */
+    .strength-wrap  { margin-top: 6px; }
+    .strength-track { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .strength-fill  { height: 100%; width: 0; border-radius: 2px; transition: width 0.3s, background 0.3s; }
+    .strength-text  { font-size: 0.72rem; font-weight: 600; margin-top: 3px; min-height: 1rem; }
+
+    /* Height unit toggle */
+    .unit-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+    .unit-btn    { padding: 1px 8px; font-size: 0.7rem; font-weight: 600; background: transparent; border: none; cursor: pointer; color: var(--text-muted); }
+    .unit-btn.active { background: var(--primary); color: #fff; }
+
+    /* Visually locked Next button (CSS only — still clickable so errors can show) */
+    .btn.step-locked { opacity: 0.5; }
+
+    /* Actually-disabled submit button */
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -91,7 +116,7 @@
   <div class="auth-box" style="max-width:480px;">
 
     <div class="auth-logo">
-      <h1>Fit<span>Track</span></h1>
+      <h1>Fitness<span>App</span></h1>
       <p>Your Nepali-friendly fitness &amp; nutrition companion</p>
     </div>
 
@@ -143,28 +168,37 @@
           <div class="form-row">
             <div class="form-group">
               <label>First Name *</label>
-              <input type="text" class="form-control" id="regFirstName" placeholder="Ram" />
+              <input type="text" class="form-control" id="regFirstName" placeholder="Ram" autocomplete="given-name" />
+              <div class="field-error" id="err-regFirstName"></div>
             </div>
             <div class="form-group">
               <label>Last Name *</label>
-              <input type="text" class="form-control" id="regLastName" placeholder="Sharma" />
+              <input type="text" class="form-control" id="regLastName" placeholder="Sharma" autocomplete="family-name" />
+              <div class="field-error" id="err-regLastName"></div>
             </div>
           </div>
           <div class="form-group">
             <label>Email *</label>
-            <input type="email" class="form-control" id="regEmail" placeholder="your@email.com" />
+            <input type="email" class="form-control" id="regEmail" placeholder="your@email.com" autocomplete="email" />
+            <div class="field-error" id="err-regEmail"></div>
           </div>
           <div class="form-group">
             <label>Password *</label>
-            <input type="password" class="form-control" id="regPassword" placeholder="Min 6 characters" />
+            <input type="password" class="form-control" id="regPassword" placeholder="Min 8 characters" autocomplete="new-password" />
+            <div class="strength-wrap">
+              <div class="strength-track"><div class="strength-fill" id="strengthFill"></div></div>
+              <div class="strength-text" id="strengthLabel"></div>
+            </div>
+            <div class="field-error" id="err-regPassword"></div>
           </div>
           <div class="form-group">
             <label>Confirm Password *</label>
-            <input type="password" class="form-control" id="regConfirm" placeholder="Repeat password" />
+            <input type="password" class="form-control" id="regConfirm" placeholder="Repeat password" autocomplete="new-password" />
+            <div class="field-error" id="err-regConfirm"></div>
           </div>
           <div class="step-nav">
             <span class="text-xs text-muted">Step 1 of 5</span>
-            <button type="button" class="btn btn-primary" onclick="nextStep(1)">Next →</button>
+            <button type="button" class="btn btn-primary step-locked" id="nextBtn1" onclick="nextStep(1)">Next &rarr;</button>
           </div>
         </div>
 
@@ -173,8 +207,9 @@
           <h3 style="font-size:1rem;margin-bottom:14px;">Personal information</h3>
           <div class="form-row">
             <div class="form-group">
-              <label>Age *</label>
-              <input type="number" class="form-control" id="regAge" placeholder="25" min="10" max="100" />
+              <label>Date of Birth *</label>
+              <input type="date" class="form-control" id="regDob" />
+              <div class="field-error" id="err-regDob"></div>
             </div>
             <div class="form-group">
               <label>Gender *</label>
@@ -184,16 +219,25 @@
                 <option value="FEMALE">Female</option>
                 <option value="OTHER">Other / Prefer not to say</option>
               </select>
+              <div class="field-error" id="err-regGender"></div>
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Height (cm) *</label>
-              <input type="number" class="form-control" id="regHeight" placeholder="170" min="100" max="250" step="0.1" oninput="updateBmi()" />
+              <label style="display:flex;align-items:center;justify-content:space-between;">
+                Height *
+                <span class="unit-toggle">
+                  <button type="button" id="unitCm" class="unit-btn active" onclick="setHeightUnit('cm')">cm</button>
+                  <button type="button" id="unitFt" class="unit-btn" onclick="setHeightUnit('ft')">ft</button>
+                </span>
+              </label>
+              <input type="number" class="form-control" id="regHeight" placeholder="170" min="50" max="272" step="1" oninput="updateBmi()" />
+              <div class="field-error" id="err-regHeight"></div>
             </div>
             <div class="form-group">
               <label>Current Weight (kg) *</label>
-              <input type="number" class="form-control" id="regWeight" placeholder="70" min="20" max="300" step="0.1" oninput="updateBmi()" />
+              <input type="number" class="form-control" id="regWeight" placeholder="70" min="20" max="635" step="0.1" oninput="updateBmi()" />
+              <div class="field-error" id="err-regWeight"></div>
             </div>
           </div>
           <div class="bmi-preview" id="bmiPreview">
@@ -202,9 +246,9 @@
             <span id="bmiCat" style="margin-left:6px;font-size:0.8rem;"></span>
           </div>
           <div class="step-nav">
-            <button type="button" class="btn btn-ghost" onclick="prevStep(2)">← Back</button>
+            <button type="button" class="btn btn-ghost" onclick="prevStep(2)">&larr; Back</button>
             <span class="text-xs text-muted">Step 2 of 5</span>
-            <button type="button" class="btn btn-primary" onclick="nextStep(2)">Next →</button>
+            <button type="button" class="btn btn-primary step-locked" id="nextBtn2" onclick="nextStep(2)">Next &rarr;</button>
           </div>
         </div>
 
@@ -231,33 +275,34 @@
             <label>Current Activity Level *</label>
             <div class="activity-grid">
               <div class="activity-card" onclick="pickActivity(this,'SEDENTARY')">
-                <div class="icon">🛋️</div>
+                <div class="icon">&#x1F6CB;</div>
                 <div class="label">Sedentary</div>
                 <div class="sub">Normal daily life</div>
               </div>
               <div class="activity-card" onclick="pickActivity(this,'LIGHTLY_ACTIVE')">
-                <div class="icon">🚶</div>
+                <div class="icon">&#x1F6B6;</div>
                 <div class="label">Lightly Active</div>
                 <div class="sub">Occasional walking</div>
               </div>
               <div class="activity-card" onclick="pickActivity(this,'GYM_GOING')">
-                <div class="icon">🏋️</div>
+                <div class="icon">&#x1F3CB;</div>
                 <div class="label">Gym-Going</div>
                 <div class="sub">3–5x per week</div>
               </div>
               <div class="activity-card" onclick="pickActivity(this,'VERY_ACTIVE')">
-                <div class="icon">⚡</div>
+                <div class="icon">&#x26A1;</div>
                 <div class="label">Very Active</div>
                 <div class="sub">Daily intense training</div>
               </div>
             </div>
             <input type="hidden" id="regActivity" />
+            <div class="field-error" id="activityErr"></div>
           </div>
 
           <div class="step-nav">
-            <button type="button" class="btn btn-ghost" onclick="prevStep(3)">← Back</button>
+            <button type="button" class="btn btn-ghost" onclick="prevStep(3)">&larr; Back</button>
             <span class="text-xs text-muted">Step 3 of 5</span>
-            <button type="button" class="btn btn-primary" onclick="nextStep(3)">Next →</button>
+            <button type="button" class="btn btn-primary step-locked" id="nextBtn3" onclick="nextStep(3)">Next &rarr;</button>
           </div>
         </div>
 
@@ -276,11 +321,13 @@
               <option value="ENDURANCE">Build Endurance — Cardio &amp; stamina</option>
               <option value="FLEXIBILITY">Improve Flexibility — Yoga / stretching</option>
             </select>
+            <div class="field-error" id="err-regGoal"></div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Target Weight (kg) *</label>
-              <input type="number" class="form-control" id="regTarget" placeholder="65" min="20" max="300" step="0.1" oninput="checkGoal()" />
+              <input type="number" class="form-control" id="regTarget" placeholder="65" min="20" max="635" step="0.1" oninput="checkGoal()" />
+              <div class="field-error" id="err-regTarget"></div>
             </div>
             <div class="form-group">
               <label>Goal Timeline *</label>
@@ -292,18 +339,19 @@
                 <option value="1_YEAR">1 Year</option>
                 <option value="ONGOING">Ongoing / No deadline</option>
               </select>
+              <div class="field-error" id="err-regTimeline"></div>
             </div>
           </div>
 
           <div class="goal-warning" id="goalWarn">
-            <span style="flex-shrink:0;">⚠️</span>
+            <span style="flex-shrink:0;">&#x26A0;&#xFE0F;</span>
             <span id="goalWarnText"></span>
           </div>
 
           <div class="step-nav">
-            <button type="button" class="btn btn-ghost" onclick="prevStep(4)">← Back</button>
+            <button type="button" class="btn btn-ghost" onclick="prevStep(4)">&larr; Back</button>
             <span class="text-xs text-muted">Step 4 of 5</span>
-            <button type="button" class="btn btn-primary" onclick="nextStep(4)">Next →</button>
+            <button type="button" class="btn btn-primary step-locked" id="nextBtn4" onclick="nextStep(4)">Next &rarr;</button>
           </div>
         </div>
 
@@ -316,16 +364,16 @@
           <div class="form-group">
             <label>Terms &amp; Conditions *</label>
             <div class="terms-box">
-              <strong>FitTrack Terms &amp; Conditions</strong><br/><br/>
-              1. <strong>Health Disclaimer:</strong> FitTrack provides general fitness and nutrition guidance only. It is not a substitute for professional medical advice. Always consult a qualified healthcare provider before starting any exercise or diet program, especially if you have a medical condition.<br/><br/>
+              <strong>Fitness App Terms &amp; Conditions</strong><br/><br/>
+              1. <strong>Health Disclaimer:</strong> Fitness App provides general fitness and nutrition guidance only. It is not a substitute for professional medical advice. Always consult a qualified healthcare provider before starting any exercise or diet program, especially if you have a medical condition.<br/><br/>
               2. <strong>Data Usage:</strong> Your personal health data (weight, medical conditions, activity) is stored securely and used only to provide personalised recommendations within this application.<br/><br/>
               3. <strong>Accuracy:</strong> You are responsible for entering accurate information. Inaccurate data may lead to unsuitable recommendations.<br/><br/>
-              4. <strong>Liability:</strong> FitTrack and its developers are not liable for any injury, health complications, or adverse outcomes from following generated recommendations.<br/><br/>
+              4. <strong>Liability:</strong> Fitness App and its developers are not liable for any injury, health complications, or adverse outcomes from following generated recommendations.<br/><br/>
               5. <strong>Age Requirement:</strong> You must be at least 10 years old. Users under 18 should have parental guidance.<br/><br/>
               6. <strong>Nepal Context:</strong> Nutritional suggestions are tailored to Nepali dietary habits. Individual results may vary.
             </div>
             <label class="condition-item" id="termsLabel" style="margin-top:6px;">
-              <input type="checkbox" id="termsCheck" onchange="document.getElementById('termsLabel').classList.toggle('checked', this.checked)" />
+              <input type="checkbox" id="termsCheck" />
               I have read and agree to the Terms &amp; Conditions *
             </label>
           </div>
@@ -333,8 +381,8 @@
           <div id="registerAlert"></div>
 
           <div class="step-nav">
-            <button type="button" class="btn btn-ghost" onclick="prevStep(5)">← Back</button>
-            <button type="button" class="btn btn-accent" id="submitBtn" onclick="submitRegister()" style="flex:1;">
+            <button type="button" class="btn btn-ghost" onclick="prevStep(5)">&larr; Back</button>
+            <button type="button" class="btn btn-accent" id="submitBtn" onclick="submitRegister()" style="flex:1;" disabled>
               Create Account
             </button>
           </div>
@@ -348,267 +396,594 @@
 <script src="js/api.js"></script>
 <script src="js/app.js"></script>
 <script>
-  // Already logged in → skip to dashboard
-  if (localStorage.getItem('token')) window.location.href = 'dashboard.html';
+// ── Already logged-in ──────────────────────────────────────────
+if (localStorage.getItem('token')) window.location.href = 'dashboard.html';
+if (window.location.hash === '#register') switchTab('register');
 
-  // Deep-link: login.html#register opens the register tab directly
-  if (window.location.hash === '#register') switchTab('register');
+// ══════════════════════════════════════════════════════════════
+//  VALIDATION RULES — single source of truth, easy to unit-test
+// ══════════════════════════════════════════════════════════════
+const RULES = {
+  firstName(val) {
+    if (!val)                                    return 'First name is required.';
+    if (!/^[a-zA-Z]/.test(val))                 return 'Must start with a letter (a–z, A–Z).';
+    if (!/^[a-zA-Z][a-zA-Z \-']*$/.test(val))  return 'Only letters, spaces, hyphens, and apostrophes allowed.';
+    if (val.length < 2)                          return 'At least 2 characters required.';
+    if (val.length > 50)                         return 'Maximum 50 characters.';
+    return null;
+  },
+  lastName(val) {
+    if (!val)                                    return 'Last name is required.';
+    if (!/^[a-zA-Z]/.test(val))                 return 'Must start with a letter (a–z, A–Z).';
+    if (!/^[a-zA-Z][a-zA-Z \-']*$/.test(val))  return 'Only letters, spaces, hyphens, and apostrophes allowed.';
+    if (val.length < 2)                          return 'At least 2 characters required.';
+    if (val.length > 50)                         return 'Maximum 50 characters.';
+    return null;
+  },
+  email(val) {
+    if (!val)                                       return 'Email is required.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val)) return 'Enter a valid email (e.g. user@domain.tld).';
+    return null;
+  },
+  password(val) {
+    if (!val)                    return 'Password is required.';
+    if (val.length < 8)          return 'At least 8 characters required.';
+    if (!/[A-Z]/.test(val))     return 'Include at least one uppercase letter.';
+    if (!/[a-z]/.test(val))     return 'Include at least one lowercase letter.';
+    if (!/\d/.test(val))        return 'Include at least one digit (0–9).';
+    if (!/[!@#$%^&*()\-_=+\[\]{}|;:'",.<>?`~\\\/]/.test(val))
+                                  return 'Include at least one special character (!@#$%^&* …).';
+    return null;
+  },
+  confirmPassword(val, pw) {
+    if (!val)       return 'Please confirm your password.';
+    if (val !== pw) return 'Passwords do not match.';
+    return null;
+  },
+  dateOfBirth(val) {
+    if (!val) return 'Date of birth is required.';
+    const dob   = new Date(val + 'T00:00:00');
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (isNaN(dob.getTime())) return 'Enter a valid date.';
+    if (dob >= today)         return 'Date of birth cannot be today or in the future.';
+    let age = today.getFullYear() - dob.getFullYear();
+    const mo = today.getMonth() - dob.getMonth();
+    if (mo < 0 || (mo === 0 && today.getDate() < dob.getDate())) age--;
+    if (age < 10)  return 'You must be at least 10 years old to register.';
+    if (age > 120) return 'Please enter a valid date of birth (max age 120).';
+    return null;
+  },
+  height(val, unit) {
+    if (val === '' || val == null) return 'Height is required.';
+    const n = parseFloat(val);
+    if (isNaN(n)) return 'Enter a valid height.';
+    if (unit === 'ft') {
+      if (n < 1.6 || n > 8.9) return 'Height must be between 1.6 ft and 8.9 ft.';
+    } else {
+      if (n < 50  || n > 272) return 'Height must be between 50 cm and 272 cm.';
+    }
+    return null;
+  },
+  weight(val) {
+    if (val === '' || val == null) return 'Weight is required.';
+    const n = parseFloat(val);
+    if (isNaN(n))          return 'Enter a valid weight.';
+    if (n < 20 || n > 635) return 'Weight must be between 20 kg and 635 kg.';
+    return null;
+  },
+  gender(val)       { return val ? null : 'Please select your gender.'; },
+  activity(val)     { return val ? null : 'Please select your current activity level.'; },
+  goal(val)         { return val ? null : 'Please select your primary goal.'; },
+  targetWeight(val) {
+    if (val === '' || val == null) return 'Target weight is required.';
+    const n = parseFloat(val);
+    if (isNaN(n) || n < 20 || n > 635) return 'Target weight must be between 20 kg and 635 kg.';
+    return null;
+  },
+  timeline(val) { return val ? null : 'Please select a goal timeline.'; },
+};
 
-  // ==================== Tab ====================
-  function switchTab(tab) {
-    document.getElementById('loginSection').classList.toggle('hidden', tab !== 'login');
-    document.getElementById('registerSection').classList.toggle('hidden', tab !== 'register');
-    document.getElementById('loginTab').classList.toggle('active', tab === 'login');
-    document.getElementById('registerTab').classList.toggle('active', tab === 'register');
-    document.getElementById('alertBox').innerHTML = '';
+// ══════════════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════════════
+function gv(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+function v(id) { return gv(id); } // legacy alias used by checkGoal/buildSummary
+
+function showFieldError(inputId, msg) {
+  const el    = document.getElementById(inputId);
+  const errEl = document.getElementById('err-' + inputId);
+  if (el) {
+    el.classList.toggle('invalid', !!msg);
+    el.classList.toggle('valid',   !msg && el.value !== '');
+  }
+  if (errEl) errEl.textContent = msg || '';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PASSWORD STRENGTH
+// ══════════════════════════════════════════════════════════════
+function passwordStrengthInfo(pw) {
+  let score = 0;
+  if (pw.length >= 8)  score++;
+  if (pw.length >= 12) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[a-z]/.test(pw)) score++;
+  if (/\d/.test(pw))    score++;
+  if (/[!@#$%^&*()\-_=+\[\]{}|;:'",.<>?`~\\\/]/.test(pw)) score++;
+  if (score <= 2) return { label: 'Weak',   color: '#dc2626', pct: '25%'  };
+  if (score <= 3) return { label: 'Fair',   color: '#d97706', pct: '50%'  };
+  if (score <= 4) return { label: 'Good',   color: '#2563eb', pct: '75%'  };
+  return              { label: 'Strong', color: '#16a34a', pct: '100%' };
+}
+
+// ══════════════════════════════════════════════════════════════
+//  HEIGHT UNIT TOGGLE
+// ══════════════════════════════════════════════════════════════
+let heightUnit = 'cm';
+
+function setHeightUnit(unit) {
+  heightUnit = unit;
+  const inp = document.getElementById('regHeight');
+  document.getElementById('unitCm').classList.toggle('active', unit === 'cm');
+  document.getElementById('unitFt').classList.toggle('active', unit === 'ft');
+  if (unit === 'cm') {
+    inp.placeholder = '170'; inp.min = '50';  inp.max = '272'; inp.step = '1';
+  } else {
+    inp.placeholder = '5.7'; inp.min = '1.6'; inp.max = '8.9'; inp.step = '0.1';
+  }
+  if (inp.value) {
+    showFieldError('regHeight', RULES.height(inp.value, unit));
+    updateBmi();
+  }
+  updateNextBtn(currentStep);
+}
+
+function getHeightCm() {
+  const val = parseFloat(document.getElementById('regHeight').value);
+  if (isNaN(val)) return 0;
+  return heightUnit === 'ft' ? Math.round(val * 30.48) : val;
+}
+
+function getDobAge() {
+  const dobVal = gv('regDob');
+  if (!dobVal) return 0;
+  const dob   = new Date(dobVal + 'T00:00:00');
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let age = today.getFullYear() - dob.getFullYear();
+  const mo = today.getMonth() - dob.getMonth();
+  if (mo < 0 || (mo === 0 && today.getDate() < dob.getDate())) age--;
+  return age;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  STEP VALIDITY — no side-effects, drives Next button state
+// ══════════════════════════════════════════════════════════════
+function isStepValid(step) {
+  if (step === 1) {
+    const pw = document.getElementById('regPassword').value;
+    const cf = document.getElementById('regConfirm').value;
+    return !RULES.firstName(gv('regFirstName')) &&
+           !RULES.lastName(gv('regLastName'))   &&
+           !RULES.email(gv('regEmail'))          &&
+           !RULES.password(pw)                  &&
+           !RULES.confirmPassword(cf, pw);
+  }
+  if (step === 2) {
+    return !RULES.dateOfBirth(gv('regDob'))              &&
+           !RULES.gender(gv('regGender'))                &&
+           !RULES.height(gv('regHeight'), heightUnit)    &&
+           !RULES.weight(gv('regWeight'));
+  }
+  if (step === 3) return !!gv('regActivity');
+  if (step === 4) {
+    return !RULES.goal(gv('regGoal'))           &&
+           !RULES.targetWeight(gv('regTarget')) &&
+           !RULES.timeline(gv('regTimeline'));
+  }
+  return true;
+}
+
+function updateNextBtn(step) {
+  const btn = document.getElementById('nextBtn' + step);
+  if (btn) btn.classList.toggle('step-locked', !isStepValid(step));
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PER-STEP VALIDATION WITH INLINE ERRORS — called on Next click
+// ══════════════════════════════════════════════════════════════
+let currentStep = 1;
+
+function validateStepFields(step) {
+  document.getElementById('alertBox').innerHTML = '';
+
+  if (step === 1) {
+    const pw = document.getElementById('regPassword').value;
+    const cf = document.getElementById('regConfirm').value;
+    const checks = [
+      [RULES.firstName(gv('regFirstName')), 'regFirstName'],
+      [RULES.lastName(gv('regLastName')),   'regLastName'],
+      [RULES.email(gv('regEmail')),         'regEmail'],
+      [RULES.password(pw),                  'regPassword'],
+      [RULES.confirmPassword(cf, pw),       'regConfirm'],
+    ];
+    checks.forEach(([msg, id]) => showFieldError(id, msg));
+    return checks.every(([msg]) => !msg);
   }
 
-  // ==================== Step navigation ====================
-  const STEPS = 5;
-  const LABELS = ['Account', 'Personal', 'Health', 'Goals', 'Review'];
-
-  function goToStep(n) {
-    document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
-    document.getElementById(`step${n}`).classList.add('active');
-
-    for (let i = 1; i <= STEPS; i++) {
-      const dot = document.getElementById(`dot${i}`);
-      dot.className = 'step-dot' + (i < n ? ' done' : i === n ? ' active' : '');
-      dot.innerHTML = (i < n ? '✓' : i) + `<span class="step-label">${LABELS[i-1]}</span>`;
+  if (step === 2) {
+    const checks = [
+      [RULES.dateOfBirth(gv('regDob')),             'regDob'],
+      [RULES.gender(gv('regGender')),               'regGender'],
+      [RULES.height(gv('regHeight'), heightUnit),   'regHeight'],
+      [RULES.weight(gv('regWeight')),               'regWeight'],
+    ];
+    checks.forEach(([msg, id]) => showFieldError(id, msg));
+    if (!checks.every(([msg]) => !msg)) return false;
+    // Cross-field BMI sanity check
+    const hCm = getHeightCm(), wKg = parseFloat(gv('regWeight'));
+    if (hCm && wKg) {
+      const bmi = wKg / ((hCm / 100) ** 2);
+      if (bmi < 10 || bmi > 65) {
+        showAlert('alertBox', 'The height/weight combination appears unrealistic. Please double-check your values.', 'error');
+        return false;
+      }
     }
-    for (let i = 1; i < STEPS; i++) {
-      document.getElementById(`line${i}`).className = 'step-line' + (i < n ? ' done' : '');
-    }
-  }
-
-  function nextStep(from) {
-    if (!validateStep(from)) return;
-    if (from + 1 === 5) buildSummary();
-    goToStep(from + 1);
-  }
-  function prevStep(from) { goToStep(from - 1); }
-
-  // ==================== Validation ====================
-  function validateStep(step) {
-    document.getElementById('alertBox').innerHTML = '';
-
-    if (step === 1) {
-      const fn = v('regFirstName'), ln = v('regLastName');
-      const email = v('regEmail'), pw = v('regPassword'), pw2 = v('regConfirm');
-      if (!fn) return fail('First name is required.');
-      if (!ln) return fail('Last name is required.');
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail('Enter a valid email address.');
-      if (pw.length < 6) return fail('Password must be at least 6 characters.');
-      if (pw !== pw2) return fail('Passwords do not match.');
-    }
-
-    if (step === 2) {
-      const age = +v('regAge'), height = +v('regHeight'), weight = +v('regWeight');
-      const gender = v('regGender');
-      if (!age || age < 10 || age > 100) return fail('Age must be between 10 and 100.');
-      if (!gender) return fail('Please select your gender.');
-      if (!height || height < 100 || height > 250) return fail('Height must be between 100 and 250 cm.');
-      if (!weight || weight < 20 || weight > 300) return fail('Weight must be between 20 and 300 kg.');
-      const bmi = weight / ((height / 100) ** 2);
-      if (bmi < 10 || bmi > 65) return fail('The height/weight combination appears unrealistic. Please double-check your values.');
-    }
-
-    if (step === 3) {
-      if (!v('regActivity')) return fail('Please select your current activity level.');
-    }
-
-    if (step === 4) {
-      const target = +v('regTarget'), timeline = v('regTimeline'), goal = v('regGoal');
-      if (!goal) return fail('Please select your primary goal.');
-      if (!target || target < 20 || target > 300) return fail('Target weight must be between 20 and 300 kg.');
-      if (!timeline) return fail('Please select a goal timeline.');
-    }
-
     return true;
   }
 
-  function v(id) { return document.getElementById(id).value.trim(); }
-  function fail(msg) { showAlert('alertBox', msg, 'error'); return false; }
-
-  // ==================== BMI preview ====================
-  function updateBmi() {
-    const h = +v('regHeight'), w = +v('regWeight');
-    const el = document.getElementById('bmiPreview');
-    if (h >= 100 && w >= 20) {
-      const bmi = (w / ((h / 100) ** 2)).toFixed(1);
-      const cats = [
-        { max: 18.5, label: 'Underweight', color: '#2563eb' },
-        { max: 25,   label: 'Normal',      color: '#16a34a' },
-        { max: 30,   label: 'Overweight',  color: '#d97706' },
-        { max: 999,  label: 'Obese',       color: '#dc2626' },
-      ];
-      const cat = cats.find(c => bmi < c.max);
-      document.getElementById('bmiVal').textContent = bmi;
-      document.getElementById('bmiCat').textContent = `(${cat.label})`;
-      document.getElementById('bmiCat').style.color = cat.color;
-      el.style.display = 'block';
-    } else {
-      el.style.display = 'none';
-    }
+  if (step === 3) {
+    const err = RULES.activity(gv('regActivity'));
+    document.getElementById('activityErr').textContent = err || '';
+    return !err;
   }
 
-  // ==================== Medical conditions ====================
-  document.querySelectorAll('#conditionGrid .condition-item').forEach(label => {
-    label.addEventListener('change', () => {
-      const cb = label.querySelector('input');
-      label.classList.toggle('checked', cb.checked);
-
-      // Selecting a real condition unchecks "None"
-      if (cb.value !== 'NONE' && cb.checked) {
-        const noneItem = document.getElementById('noneItem');
-        noneItem.querySelector('input').checked = false;
-        noneItem.classList.remove('checked');
-      }
-      // Selecting "None" unchecks all others
-      if (cb.value === 'NONE' && cb.checked) {
-        document.querySelectorAll('#conditionGrid input[type="checkbox"]').forEach(c => {
-          if (c.value !== 'NONE') { c.checked = false; c.closest('.condition-item').classList.remove('checked'); }
-        });
-      }
-    });
-  });
-
-  function getConditions() {
-    return [...document.querySelectorAll('#conditionGrid input:checked')]
-      .map(c => c.value).filter(v => v !== 'NONE');
-  }
-
-  // ==================== Activity level ====================
-  function pickActivity(card, value) {
-    document.querySelectorAll('.activity-card').forEach(c => c.classList.remove('selected'));
-    card.classList.add('selected');
-    document.getElementById('regActivity').value = value;
-  }
-
-  // ==================== Goal feasibility check ====================
-  function checkGoal() {
-    const w = +v('regWeight'), t = +v('regTarget'), timeline = v('regTimeline');
-    const warn = document.getElementById('goalWarn');
-    warn.classList.remove('show');
-    if (!w || !t || !timeline || timeline === 'ONGOING') return;
-
-    const months = { '1_MONTH': 1, '3_MONTHS': 3, '6_MONTHS': 6, '1_YEAR': 12 }[timeline] || 3;
-    const diff = w - t;
-    const maxLoss = 4 * months;
-    const maxGain = 2 * months;
-
-    let msg = '';
-    if (diff > maxLoss) {
-      msg = `Losing ${diff.toFixed(1)} kg in ${months} month(s) is aggressive. Safe weight loss is about ${maxLoss} kg in this timeframe. Consider a longer timeline for sustainable results.`;
-    } else if (-diff > maxGain) {
-      msg = `Gaining ${(-diff).toFixed(1)} kg in ${months} month(s) is aggressive. Safe weight gain is about ${maxGain} kg in this timeframe.`;
-    }
-
-    const h = +v('regHeight');
-    if (h >= 100 && t) {
-      const targetBmi = t / ((h / 100) ** 2);
-      if (targetBmi < 15) msg += (msg ? ' Also: ' : '') + 'This target weight would result in a dangerously low BMI. Please reconsider.';
-      else if (targetBmi > 45) msg += (msg ? ' Also: ' : '') + 'This target weight would result in a very high BMI. Please reconsider.';
-    }
-
-    if (msg) {
-      document.getElementById('goalWarnText').textContent = msg;
-      warn.classList.add('show');
-    }
-  }
-
-  // ==================== Summary ====================
-  function buildSummary() {
-    const conditions = getConditions();
-    const timeline = v('regTimeline').replace(/_/g, ' ');
-    const goal = v('regGoal').replace(/_/g, ' ');
-    const activity = v('regActivity').replace(/_/g, ' ');
-
-    const rows = [
-      ['Name',           `${v('regFirstName')} ${v('regLastName')}`],
-      ['Email',          v('regEmail')],
-      ['Age',            `${v('regAge')} years`],
-      ['Gender',         v('regGender')],
-      ['Height',         `${v('regHeight')} cm`],
-      ['Current Weight', `${v('regWeight')} kg`],
-      ['Target Weight',  `${v('regTarget')} kg`],
-      ['Goal',           goal],
-      ['Timeline',       timeline],
-      ['Activity Level', activity],
-      ['Conditions',     conditions.length ? conditions.join(', ').replace(/_/g,' ') : 'None'],
+  if (step === 4) {
+    const checks = [
+      [RULES.goal(gv('regGoal')),             'regGoal'],
+      [RULES.targetWeight(gv('regTarget')),   'regTarget'],
+      [RULES.timeline(gv('regTimeline')),     'regTimeline'],
     ];
-
-    document.getElementById('summaryGrid').innerHTML = rows.map(([l, val]) => `
-      <div class="summary-item">
-        <div class="summary-label">${l}</div>
-        <div class="summary-value">${val || '—'}</div>
-      </div>`).join('');
+    checks.forEach(([msg, id]) => showFieldError(id, msg));
+    return checks.every(([msg]) => !msg);
   }
 
-  // ==================== Submit registration ====================
-  async function submitRegister() {
-    if (!document.getElementById('termsCheck').checked) {
-      showAlert('registerAlert', 'You must accept the Terms &amp; Conditions to continue.', 'error');
-      return;
-    }
-    const btn = document.getElementById('submitBtn');
-    setLoading(btn, true);
-    document.getElementById('registerAlert').innerHTML = '';
+  return true;
+}
 
-    try {
-      const payload = {
-        firstName:         v('regFirstName'),
-        lastName:          v('regLastName'),
-        email:             v('regEmail'),
-        password:          document.getElementById('regPassword').value,
-        age:               +v('regAge'),
-        gender:            v('regGender'),
-        heightCm:          +v('regHeight'),
-        weightKg:          +v('regWeight'),
-        targetWeightKg:    +v('regTarget'),
-        fitnessGoal:       v('regGoal'),
-        goalTimeline:      v('regTimeline'),
-        activityLevel:     v('regActivity'),
-        medicalConditions: getConditions(),
-      };
+// ══════════════════════════════════════════════════════════════
+//  BLUR LISTENERS
+// ══════════════════════════════════════════════════════════════
+function bl(id, fn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const run = () => { showFieldError(id, fn()); updateNextBtn(currentStep); };
+  el.addEventListener('blur', run);
+  if (el.tagName === 'SELECT') el.addEventListener('change', run);
+}
 
-      await api.register(payload);
-      const res = await api.login({ email: payload.email, password: payload.password });
-      storeUser(res);
-      window.location.href = 'dashboard.html';
-    } catch (err) {
-      showAlert('registerAlert', err.message || 'Registration failed. Please try again.', 'error');
-    } finally {
-      setLoading(btn, false);
-    }
-  }
-
-  // ==================== Login ====================
-  document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('loginBtn');
-    setLoading(btn, true);
-    try {
-      const res = await api.login({
-        email:    document.getElementById('loginEmail').value,
-        password: document.getElementById('loginPassword').value,
-      });
-      storeUser(res);
-      window.location.href = 'dashboard.html';
-    } catch (_) {
-      showAlert('alertBox', 'Invalid email or password.', 'error');
-    } finally {
-      setLoading(btn, false);
-    }
+function initBlurValidation() {
+  // Step 1 — text fields
+  bl('regFirstName', () => RULES.firstName(gv('regFirstName')));
+  bl('regLastName',  () => RULES.lastName(gv('regLastName')));
+  bl('regEmail',     () => RULES.email(gv('regEmail')));
+  bl('regConfirm',   () => RULES.confirmPassword(
+    document.getElementById('regConfirm').value,
+    document.getElementById('regPassword').value
+  ));
+  // Password: also re-validates confirm + triggers strength update
+  document.getElementById('regPassword').addEventListener('blur', () => {
+    const pw = document.getElementById('regPassword').value;
+    showFieldError('regPassword', RULES.password(pw));
+    const cf = document.getElementById('regConfirm').value;
+    if (cf) showFieldError('regConfirm', RULES.confirmPassword(cf, pw));
+    updateNextBtn(1);
   });
 
-  function storeUser(res) {
-    localStorage.setItem('token',     res.token);
-    localStorage.setItem('userId',    res.user.id);
-    localStorage.setItem('email',     res.user.email);
-    localStorage.setItem('firstName', res.user.firstName || '');
-    localStorage.setItem('lastName',  res.user.lastName  || '');
+  // Step 2 — date inputs fire 'change' (picker close), not just 'blur'
+  const dobEl = document.getElementById('regDob');
+  if (dobEl) {
+    const runDob = () => { showFieldError('regDob', RULES.dateOfBirth(gv('regDob'))); updateNextBtn(currentStep); };
+    dobEl.addEventListener('blur',   runDob);
+    dobEl.addEventListener('change', runDob);
   }
+  bl('regGender', () => RULES.gender(gv('regGender')));
+  document.getElementById('regHeight').addEventListener('blur', () => {
+    showFieldError('regHeight', RULES.height(gv('regHeight'), heightUnit));
+    updateBmi();
+    updateNextBtn(currentStep);
+  });
+  document.getElementById('regWeight').addEventListener('blur', () => {
+    showFieldError('regWeight', RULES.weight(gv('regWeight')));
+    updateBmi();
+    updateNextBtn(currentStep);
+  });
+
+  // Step 4
+  bl('regGoal',     () => RULES.goal(gv('regGoal')));
+  bl('regTarget',   () => { checkGoal(); return RULES.targetWeight(gv('regTarget')); });
+  bl('regTimeline', () => { checkGoal(); return RULES.timeline(gv('regTimeline')); });
+
+  // Keep Next button state reactive on every keystroke / change
+  ['regFirstName','regLastName','regEmail','regPassword','regConfirm',
+   'regDob','regGender','regHeight','regWeight',
+   'regGoal','regTarget','regTimeline'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input',  () => updateNextBtn(currentStep));
+    el.addEventListener('change', () => updateNextBtn(currentStep));
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DOB DATE LIMITS (set min/max attributes on the date input)
+// ══════════════════════════════════════════════════════════════
+function initDobLimits() {
+  const dob = document.getElementById('regDob');
+  if (!dob) return;
+  const today = new Date();
+  const maxDt = new Date(today.getFullYear() - 10,  today.getMonth(), today.getDate());
+  const minDt = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate());
+  dob.max = maxDt.toISOString().split('T')[0];
+  dob.min = minDt.toISOString().split('T')[0];
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TAB SWITCH
+// ══════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  document.getElementById('loginSection').classList.toggle('hidden', tab !== 'login');
+  document.getElementById('registerSection').classList.toggle('hidden', tab !== 'register');
+  document.getElementById('loginTab').classList.toggle('active', tab === 'login');
+  document.getElementById('registerTab').classList.toggle('active', tab === 'register');
+  document.getElementById('alertBox').innerHTML = '';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  STEP NAVIGATION
+// ══════════════════════════════════════════════════════════════
+const STEPS  = 5;
+const LABELS = ['Account', 'Personal', 'Health', 'Goals', 'Review'];
+
+function goToStep(n) {
+  currentStep = n;
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('step' + n).classList.add('active');
+  for (let i = 1; i <= STEPS; i++) {
+    const dot = document.getElementById('dot' + i);
+    dot.className = 'step-dot' + (i < n ? ' done' : i === n ? ' active' : '');
+    dot.innerHTML = (i < n ? '&#x2713;' : i) + '<span class="step-label">' + LABELS[i - 1] + '</span>';
+  }
+  for (let i = 1; i < STEPS; i++) {
+    document.getElementById('line' + i).className = 'step-line' + (i < n ? ' done' : '');
+  }
+  document.getElementById('alertBox').innerHTML = '';
+  updateNextBtn(n);
+}
+
+function nextStep(from) {
+  if (!validateStepFields(from)) return;
+  if (from + 1 === 5) buildSummary();
+  goToStep(from + 1);
+}
+function prevStep(from) { goToStep(from - 1); }
+
+// ══════════════════════════════════════════════════════════════
+//  BMI PREVIEW
+// ══════════════════════════════════════════════════════════════
+function updateBmi() {
+  const hCm = getHeightCm(), w = parseFloat(gv('regWeight'));
+  const el = document.getElementById('bmiPreview');
+  if (hCm >= 50 && w >= 20) {
+    const bmi = (w / ((hCm / 100) ** 2)).toFixed(1);
+    const cats = [
+      { max: 18.5, label: 'Underweight', color: '#2563eb' },
+      { max: 25,   label: 'Normal',      color: '#16a34a' },
+      { max: 30,   label: 'Overweight',  color: '#d97706' },
+      { max: 999,  label: 'Obese',       color: '#dc2626' },
+    ];
+    const cat = cats.find(c => bmi < c.max);
+    document.getElementById('bmiVal').textContent = bmi;
+    document.getElementById('bmiCat').textContent = '(' + cat.label + ')';
+    document.getElementById('bmiCat').style.color  = cat.color;
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MEDICAL CONDITIONS
+// ══════════════════════════════════════════════════════════════
+function getConditions() {
+  return [...document.querySelectorAll('#conditionGrid input:checked')]
+    .map(c => c.value).filter(x => x !== 'NONE');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ACTIVITY LEVEL
+// ══════════════════════════════════════════════════════════════
+function pickActivity(card, value) {
+  document.querySelectorAll('.activity-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  document.getElementById('regActivity').value = value;
+  document.getElementById('activityErr').textContent = '';
+  updateNextBtn(currentStep);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  GOAL FEASIBILITY WARNING
+// ══════════════════════════════════════════════════════════════
+function checkGoal() {
+  const w = parseFloat(gv('regWeight')), t = parseFloat(gv('regTarget')), timeline = gv('regTimeline');
+  const warn = document.getElementById('goalWarn');
+  warn.classList.remove('show');
+  if (!w || !t || !timeline || timeline === 'ONGOING') return;
+
+  const months = { '1_MONTH': 1, '3_MONTHS': 3, '6_MONTHS': 6, '1_YEAR': 12 }[timeline] || 3;
+  const diff = w - t, maxLoss = 4 * months, maxGain = 2 * months;
+  let msg = '';
+  if (diff > maxLoss)
+    msg = 'Losing ' + diff.toFixed(1) + ' kg in ' + months + ' month(s) is aggressive. Safe loss is ~' + maxLoss + ' kg. Consider a longer timeline.';
+  else if (-diff > maxGain)
+    msg = 'Gaining ' + (-diff).toFixed(1) + ' kg in ' + months + ' month(s) is aggressive. Safe gain is ~' + maxGain + ' kg.';
+
+  const hCm = getHeightCm();
+  if (hCm >= 50 && t) {
+    const bmi = t / ((hCm / 100) ** 2);
+    if (bmi < 15)  msg += (msg ? ' Also: ' : '') + 'Target weight gives a dangerously low BMI. Please reconsider.';
+    else if (bmi > 45) msg += (msg ? ' Also: ' : '') + 'Target weight gives a very high BMI. Please reconsider.';
+  }
+
+  if (msg) { document.getElementById('goalWarnText').textContent = msg; warn.classList.add('show'); }
+  updateNextBtn(currentStep);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  REVIEW SUMMARY
+// ══════════════════════════════════════════════════════════════
+function buildSummary() {
+  const conditions = getConditions();
+  const hVal = gv('regHeight');
+  const rows = [
+    ['Name',           gv('regFirstName') + ' ' + gv('regLastName')],
+    ['Email',          gv('regEmail')],
+    ['Date of Birth',  gv('regDob')],
+    ['Age',            getDobAge() + ' years'],
+    ['Gender',         gv('regGender')],
+    ['Height',         hVal ? hVal + ' ' + heightUnit : '—'],
+    ['Current Weight', gv('regWeight') + ' kg'],
+    ['Target Weight',  gv('regTarget') + ' kg'],
+    ['Goal',           gv('regGoal').replace(/_/g, ' ')],
+    ['Timeline',       gv('regTimeline').replace(/_/g, ' ')],
+    ['Activity Level', gv('regActivity').replace(/_/g, ' ')],
+    ['Conditions',     conditions.length ? conditions.join(', ').replace(/_/g, ' ') : 'None'],
+  ];
+  document.getElementById('summaryGrid').innerHTML = rows.map(([l, val]) =>
+    '<div class="summary-item"><div class="summary-label">' + l +
+    '</div><div class="summary-value">' + (val || '—') + '</div></div>'
+  ).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SUBMIT REGISTRATION
+// ══════════════════════════════════════════════════════════════
+async function submitRegister() {
+  if (!document.getElementById('termsCheck').checked) {
+    showAlert('registerAlert', 'You must accept the Terms &amp; Conditions to continue.', 'error');
+    return;
+  }
+  const btn = document.getElementById('submitBtn');
+  setLoading(btn, true);
+  document.getElementById('registerAlert').innerHTML = '';
+  try {
+    const payload = {
+      firstName:         gv('regFirstName'),
+      lastName:          gv('regLastName'),
+      email:             gv('regEmail'),
+      password:          document.getElementById('regPassword').value,
+      age:               getDobAge(),
+      gender:            gv('regGender'),
+      heightCm:          getHeightCm(),
+      weightKg:          parseFloat(gv('regWeight')),
+      targetWeightKg:    parseFloat(gv('regTarget')),
+      fitnessGoal:       gv('regGoal'),
+      goalTimeline:      gv('regTimeline'),
+      activityLevel:     gv('regActivity'),
+      medicalConditions: getConditions(),
+    };
+    await api.register(payload);
+    const res = await api.login({ email: payload.email, password: payload.password });
+    storeUser(res);
+    window.location.href = 'dashboard.html';
+  } catch (err) {
+    showAlert('registerAlert', err.message || 'Registration failed. Please try again.', 'error');
+  } finally {
+    setLoading(btn, false);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LOGIN
+// ══════════════════════════════════════════════════════════════
+function storeUser(res) {
+  localStorage.setItem('token',     res.token);
+  localStorage.setItem('userId',    res.user.id);
+  localStorage.setItem('email',     res.user.email);
+  localStorage.setItem('firstName', res.user.firstName || '');
+  localStorage.setItem('lastName',  res.user.lastName  || '');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  BOOT — script is at end of <body> so DOM is already ready
+// ══════════════════════════════════════════════════════════════
+initBlurValidation();
+initDobLimits();
+
+// Password strength meter
+(function () {
+  const pwEl = document.getElementById('regPassword');
+  const fill = document.getElementById('strengthFill');
+  const lbl  = document.getElementById('strengthLabel');
+  if (!pwEl || !fill || !lbl) return;
+  pwEl.addEventListener('input', () => {
+    const pw = pwEl.value;
+    if (!pw) { fill.style.width = '0'; lbl.textContent = ''; return; }
+    const s = passwordStrengthInfo(pw);
+    fill.style.width      = s.pct;
+    fill.style.background = s.color;
+    lbl.style.color       = s.color;
+    lbl.textContent       = s.label;
+  });
+})();
+
+// Terms checkbox — toggle label style and enable/disable submit
+document.getElementById('termsCheck').addEventListener('change', function () {
+  document.getElementById('termsLabel').classList.toggle('checked', this.checked);
+  document.getElementById('submitBtn').disabled = !this.checked;
+});
+
+// Medical conditions — mutual exclusion with "None"
+document.querySelectorAll('#conditionGrid .condition-item').forEach(label => {
+  label.addEventListener('change', () => {
+    const cb = label.querySelector('input');
+    label.classList.toggle('checked', cb.checked);
+    if (cb.value !== 'NONE' && cb.checked) {
+      const noneItem = document.getElementById('noneItem');
+      noneItem.querySelector('input').checked = false;
+      noneItem.classList.remove('checked');
+    }
+    if (cb.value === 'NONE' && cb.checked) {
+      document.querySelectorAll('#conditionGrid input[type="checkbox"]').forEach(c => {
+        if (c.value !== 'NONE') { c.checked = false; c.closest('.condition-item').classList.remove('checked'); }
+      });
+    }
+  });
+});
+
+// Login form
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  setLoading(btn, true);
+  try {
+    const res = await api.login({
+      email:    document.getElementById('loginEmail').value,
+      password: document.getElementById('loginPassword').value,
+    });
+    storeUser(res);
+    window.location.href = 'dashboard.html';
+  } catch (_) {
+    showAlert('alertBox', 'Invalid email or password.', 'error');
+  } finally {
+    setLoading(btn, false);
+  }
+});
+
+// Initial button states — all steps start locked (fields are empty)
+[1, 2, 3, 4].forEach(s => updateNextBtn(s));
 </script>
 </body>
 </html>
